@@ -1,0 +1,43 @@
+<!-- templates/gallery/includes/category_filters.html -->
+<div class="gallery-filters">
+    <button class="filter-btn {% if not active_category %}active{% endif %}" 
+            data-filter="all">
+        <i class="fas fa-layer-group"></i>
+        All Work
+    </button>
+    
+    {% for category in categories %}
+    <button class="filter-btn {% if active_category == category.slug %}active{% endif %}" 
+            data-filter="{{ category.slug }}">
+        {% if category.icon %}
+        <i class="{{ category.icon }}"></i>
+        {% else %}
+        <i class="fas fa-image"></i>
+        {% endif %}
+        {{ category.name }}
+        <span class="filter-count">{{ category.image_count }}</span>
+    </button>
+    {% endfor %}
+</div>
+
+<!-- templates/gallery/includes/featured_images.html -->
+{% if images %}
+<div class="featured-images-section">
+    <h3>Featured Work</h3>
+    <div class="row g-4">
+        {% for image in images %}
+        <div class="col-md-3">
+            <div class="featured-image-card">
+                <img src="{{ image.image.url }}" 
+                     alt="{{ image.title }}"
+                     class="img-fluid rounded">
+                <div class="featured-image-overlay">
+                    <h6>{{ image.title }}</h6>
+                    <small>{{ image.category.name }}</small>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+</div>
+{% endif %}

@@ -1,0 +1,225 @@
+<!-- templates/user_dashboard/base_dashboard.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+    .dashboard-container {
+        padding: 120px 0 60px;
+        min-height: 100vh;
+        background: linear-gradient(135deg, var(--primary-light) 0%, #ffffff 100%);
+    }
+
+    .dashboard-sidebar {
+        background: var(--white);
+        border-radius: 15px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+        padding: 30px;
+        height: fit-content;
+        position: sticky;
+        top: 100px;
+    }
+
+    .dashboard-nav .nav-link {
+        color: var(--dark);
+        padding: 12px 15px;
+        margin: 5px 0;
+        border-radius: 10px;
+        transition: var(--transition);
+    }
+
+    .dashboard-nav .nav-link.active,
+    .dashboard-nav .nav-link:hover {
+        background-color: var(--primary-light);
+        color: var(--primary-dark);
+    }
+
+    .dashboard-nav .nav-link i {
+        width: 20px;
+        margin-right: 10px;
+    }
+
+    .dashboard-content {
+        background: var(--white);
+        border-radius: 15px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+        padding: 40px;
+    }
+
+    .user-avatar {
+        width: 80px;
+        height: 80px;
+        background: linear-gradient(135deg, var(--primary-dark), var(--primary-medium));
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 2rem;
+        margin-bottom: 20px;
+        overflow: hidden;
+    }
+
+    .user-avatar img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+
+    .booking-card {
+        border: none;
+        border-radius: 12px;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+        margin-bottom: 20px;
+        transition: var(--transition);
+    }
+
+    .booking-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.12);
+    }
+
+    .booking-status {
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+
+    .status-confirmed {
+        background: #d4edda;
+        color: #155724;
+    }
+    .status-pending {
+        background: #fff3cd;
+        color: #856404;
+    }
+    .status-completed {
+        background: #d1ecf1;
+        color: #0c5460;
+    }
+    .status-cancelled {
+        background: #f8d7da;
+        color: #721c24;
+    }
+
+    .stats-card {
+        background: linear-gradient(135deg, var(--primary-dark), var(--primary-medium));
+        color: white;
+        border-radius: 15px;
+        padding: 25px;
+        text-align: center;
+    }
+
+    .stats-number {
+        font-size: 2.5rem;
+        font-weight: 700;
+        margin-bottom: 5px;
+    }
+
+    .loyalty-badge {
+        background: linear-gradient(135deg, #ffd700, #ffed4e);
+        color: #856404;
+        padding: 8px 15px;
+        border-radius: 20px;
+        font-weight: 600;
+        display: inline-block;
+        margin-bottom: 15px;
+    }
+
+    @media (max-width: 992px) {
+        .dashboard-container {
+            padding: 100px 0 40px;
+        }
+        .dashboard-sidebar {
+            position: static;
+            margin-bottom: 30px;
+        }
+        .dashboard-content {
+            padding: 25px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="dashboard-container">
+    <div class="container">
+        <div class="row">
+            <!-- Sidebar -->
+            <div class="col-lg-3 mb-4">
+                <div class="dashboard-sidebar">
+                    <div class="text-center mb-4">
+                        <div class="user-avatar">
+                            {% if user.profile_picture %}
+                                <img src="{{ user.profile_picture.url }}" alt="{{ user.get_full_name }}">
+                            {% else %}
+                                <i class="fas fa-user"></i>
+                            {% endif %}
+                        </div>
+                        <h5>{{ user.get_full_name|default:user.username }}</h5>
+                        <p class="text-muted">{{ user.email }}</p>
+                        {% if user_loyalty %}
+                        <div class="loyalty-badge">
+                            <i class="{{ user_loyalty.level.icon_class|default:'fas fa-crown' }} me-2"></i>
+                            {{ user_loyalty.level.get_level_display|default:'Beauty Explorer' }}
+                        </div>
+                        {% endif %}
+
+                        
+                        <!-- And update the notifications badge: -->
+                        {% if unread_notifications %}
+                        <span class="badge bg-danger float-end">{{ unread_notifications }}</span>
+                        {% endif %}
+                    </div>
+
+                    <nav class="dashboard-nav">
+                        <div class="nav flex-column">
+                            <a class="nav-link {% if request.resolver_match.url_name == 'dashboard' %}active{% endif %}" 
+                               href="{% url 'user_dashboard:dashboard' %}">
+                                <i class="fas fa-chart-pie"></i>Overview
+                            </a>
+                            <a class="nav-link {% if request.resolver_match.url_name == 'bookings' %}active{% endif %}" 
+                               href="{% url 'user_dashboard:bookings' %}">
+                                <i class="fas fa-calendar-alt"></i>My Bookings
+                                {% if upcoming_bookings.count %}
+                                <span class="badge bg-primary float-end">{{ upcoming_bookings.count }}</span>
+                                {% endif %}
+                            </a>
+                            <a class="nav-link {% if request.resolver_match.url_name == 'orders' %}active{% endif %}" 
+                               href="{% url 'user_dashboard:orders' %}">
+                                <i class="fas fa-shopping-bag"></i>My Orders
+                            </a>
+                            <a class="nav-link {% if request.resolver_match.url_name == 'profile' %}active{% endif %}" 
+                               href="{% url 'user_dashboard:profile' %}">
+                                <i class="fas fa-user-edit"></i>Edit Profile
+                            </a>
+                            <a class="nav-link {% if request.resolver_match.url_name == 'favorites' %}active{% endif %}" 
+                               href="{% url 'user_dashboard:favorites' %}">
+                                <i class="fas fa-heart"></i>Favorites
+                            </a>
+                            <a class="nav-link {% if request.resolver_match.url_name == 'notifications' %}active{% endif %}" 
+                               href="{% url 'user_dashboard:notifications' %}">
+                                <i class="fas fa-bell"></i>Notifications
+                                {% if unread_notifications %}
+                                <span class="badge bg-danger float-end">{{ unread_notifications }}</span>
+                                {% endif %}
+                            </a>
+                            <a href="#" class="nav-link text-danger" data-bs-toggle="modal" data-bs-target="#logoutModal">
+                                <i class="fas fa-sign-out-alt"></i>Logout
+                            </a>
+                        </div>
+                    </nav>
+                </div>
+            </div>
+
+            <!-- Main Content -->
+            <div class="col-lg-9">
+                <div class="dashboard-content">
+                    {% block dashboard_content %}{% endblock %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

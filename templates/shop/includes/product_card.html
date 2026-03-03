@@ -1,0 +1,61 @@
+{% load shop_filters %}
+
+<div class="product-card" data-aos="fade-up" data-aos-delay="{{ forloop.counter0|multiply:100 }}">
+        <div class="position-relative">
+        <img src="{{ product.get_main_image_url }}" alt="{{ product.name }}" class="product-img">
+        {% if product.is_on_sale %}
+            <span class="product-badge badge-sale">Sale {{ product.discount_percentage }}%</span>
+        {% elif product.is_new %}
+            <span class="product-badge badge-new">New</span>
+        {% elif product.is_bestseller %}
+            <span class="product-badge badge-popular">Popular</span>
+        {% endif %}
+        {% if not product.in_stock %}
+            <span class="product-badge badge-out-of-stock">Out of Stock</span>
+        {% elif product.low_stock %}
+            <span class="product-badge badge-low-stock">Low Stock</span>
+        {% endif %}
+    </div>
+    <div class="product-content">
+        <span class="product-category">{{ product.category.name }}</span>
+        <h4 class="product-title">{{ product.name }}</h4>
+        <p class="product-description">{{ product.short_description|default:product.description|truncatewords:20 }}</p>
+        
+        <div class="product-rating">
+            {% with avg_rating=product.reviews.all|average_rating %}
+                {% for i in "12345"|make_list %}
+                    {% if forloop.counter <= avg_rating|floatformat:0|add:0 %}
+                        <i class="fas fa-star"></i>
+                    {% elif forloop.counter <= avg_rating|add:0.5|floatformat:0|add:0 %}
+                        <i class="fas fa-star-half-alt"></i>
+                    {% else %}
+                        <i class="far fa-star"></i>
+                    {% endif %}
+                {% endfor %}
+                <small class="text-muted ms-1">({{ product.reviews.count }})</small>
+            {% endwith %}
+        </div>
+        
+        <div class="product-price">
+            £{{ product.price }}
+            {% if product.compare_at_price %}
+                <small class="text-muted text-decoration-line-through">£{{ product.compare_at_price }}</small>
+            {% endif %}
+        </div>
+        
+        <div class="product-actions">
+            {% if product.in_stock %}
+                <button class="btn btn-primary btn-add-to-cart" data-product-id="{{ product.id }}">
+                    Add to Cart
+                </button>
+            {% else %}
+                <button class="btn btn-secondary btn-add-to-cart" disabled>
+                    Out of Stock
+                </button>
+            {% endif %}
+            <button class="btn-quick-view" data-product-id="{{ product.id }}">
+                <i class="fas fa-eye"></i>
+            </button>
+        </div>
+    </div>
+</div>

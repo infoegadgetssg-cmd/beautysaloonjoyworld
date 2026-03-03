@@ -1,0 +1,127 @@
+<!-- templates/account/login.html - UPDATED FOR USERNAME/EMAIL -->
+
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Login | Joy World Home of Beauty{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card auth-card-enter">
+        <!-- Auth Hero Section -->
+        <div class="auth-hero" data-aos="fade-right" data-aos-duration="1000" data-aos-delay="200">
+            <div class="auth-hero-pattern"></div>
+            <div class="auth-hero-content">
+                <h2 data-aos="fade-up" data-aos-delay="300">Welcome to Joy World</h2>
+                <p data-aos="fade-up" data-aos-delay="400">
+                    Join our beauty community and unlock exclusive benefits for our valued clients.
+                </p>
+                <ul class="auth-benefits">
+                    <li data-aos="fade-left" data-aos-delay="500">Track your appointment history</li>
+                    <li data-aos="fade-left" data-aos-delay="600">Save your favorite services</li>
+                    <li data-aos="fade-left" data-aos-delay="700">Receive personalized recommendations</li>
+                    <li data-aos="fade-left" data-aos-delay="800">Get exclusive member discounts</li>
+                    <li data-aos="fade-left" data-aos-delay="900">Earn loyalty points with every visit</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Login Form Section -->
+        <div class="auth-form-section" data-aos="fade-left" data-aos-duration="1000" data-aos-delay="400">
+            <div class="auth-header">
+                <h2 data-aos="fade-up" data-aos-delay="500">Welcome Back</h2>
+                <p data-aos="fade-up" data-aos-delay="600">Sign in to your account</p>
+            </div>
+
+            <!-- Django Messages -->
+            {% if messages %}
+            <div class="mb-3">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Allauth Login Form -->
+            <form method="post" action="{% url 'account_login' %}" class="auth-form active">
+                {% csrf_token %}
+                
+                <div class="form-group" data-aos="fade-up" data-aos-delay="800">
+                    <label for="id_login" class="form-label">Email Address *</label>
+                    <input type="email" 
+                           name="login" 
+                           class="form-control" 
+                           id="id_login" 
+                           required 
+                           autofocus 
+                           placeholder="Enter your email address">
+                </div>
+
+                <div class="form-group" data-aos="fade-up" data-aos-delay="900">
+                    <label for="id_password" class="form-label">Password *</label>
+                    <div class="password-input">
+                        <input type="password" 
+                               name="password" 
+                               class="form-control" 
+                               id="id_password" 
+                               required 
+                               placeholder="Enter your password">
+                        <button type="button" class="password-toggle" data-target="id_password">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="form-options" data-aos="fade-up" data-aos-delay="1000">
+                    <div class="form-check">
+                        <input class="form-check-input" type="checkbox" id="id_remember" name="remember">
+                        <label class="form-check-label" for="id_remember">Remember me</label>
+                    </div>
+                    <a href="{% url 'account_reset_password' %}" class="forgot-password">Forgot password?</a>
+                </div>
+
+                {% if redirect_field_value %}
+                <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}" />
+                {% endif %}
+
+                <button type="submit" class="btn btn-primary w-100 mb-3" data-aos="fade-up" data-aos-delay="1100">
+                    Sign In
+                </button>
+
+                <div class="auth-footer" data-aos="fade-up" data-aos-delay="1400">
+                    Don't have an account?
+                    <a href="{% url 'account_signup' %}">Sign up</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Password toggle functionality
+    document.addEventListener('DOMContentLoaded', function() {
+        document.querySelectorAll('.password-toggle').forEach((button) => {
+            button.addEventListener('click', function() {
+                const targetId = this.getAttribute('data-target');
+                const passwordInput = document.getElementById(targetId);
+                const icon = this.querySelector('i');
+
+                if (passwordInput.type === 'password') {
+                    passwordInput.type = 'text';
+                    icon.classList.remove('fa-eye');
+                    icon.classList.add('fa-eye-slash');
+                } else {
+                    passwordInput.type = 'password';
+                    icon.classList.remove('fa-eye-slash');
+                    icon.classList.add('fa-eye');
+                }
+            });
+        });
+    });
+</script>
+{% endblock %}

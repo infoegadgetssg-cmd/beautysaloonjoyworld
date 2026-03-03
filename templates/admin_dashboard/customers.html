@@ -1,0 +1,259 @@
+<!-- templates/admin_dashboard/customers.html -->
+{% extends 'admin_dashboard/base.html' %}
+
+{% block title %}Customers Management | Joy World Beauty Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+    .customer-card {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        transition: transform 0.3s;
+        min-height: 200px;
+    }
+    
+    .customer-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    
+    .customer-avatar {
+        width: 60px;
+        height: 60px;
+        background: linear-gradient(135deg, var(--primary-medium), var(--primary-dark));
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-size: 1.5rem;
+        font-weight: 600;
+    }
+    
+    .customer-tier {
+        padding: 3px 10px;
+        border-radius: 15px;
+        font-size: 0.7rem;
+        font-weight: 600;
+        text-transform: uppercase;
+    }
+    
+    .tier-vip { background: #ffd700; color: #000; }
+    .tier-gold { background: #c0c0c0; color: #000; }
+    .tier-silver { background: #cd7f32; color: #fff; }
+    .tier-bronze { background: #8c7853; color: #fff; }
+    
+    .stats-badge {
+        background: #f8f9fa;
+        padding: 5px 10px;
+        border-radius: 8px;
+        font-size: 0.9rem;
+    }
+
+    @media (max-width: 576px) {
+    .customer-avatar {
+        width: 45px;
+        height: 45px;
+        font-size: 1.2rem;
+    }
+    
+    .customer-card {
+        padding: 15px;
+    }
+    
+    .stats-badge {
+        font-size: 0.8rem;
+        padding: 4px 8px;
+    }
+}
+
+    @media (min-width: 577px) and (max-width: 768px) {
+        .customer-card {
+            min-height: 220px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4>Customers Management</h4>
+    <div>
+        <span class="badge bg-primary">{{ total_customers }} Total Customers</span>
+    </div>
+</div>
+
+<!-- Search Bar -->
+<div class="card mb-4">
+    <div class="card-body">
+        <form method="get" class="row g-3">
+            <div class="col-md-10">
+                <div class="input-group">
+                    <span class="input-group-text"><i class="fas fa-search"></i></span>
+                    <input type="text" name="search" class="form-control" placeholder="Search by name or email..." value="{{ search_query }}">
+                </div>
+            </div>
+            <div class="col-md-2">
+                <button type="submit" class="btn btn-primary w-100">
+                    <i class="fas fa-search"></i> Search
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Customers Grid -->
+<div class="row">
+    {% for customer_data in customers_with_stats %}
+    {% with customer=customer_data.customer %}
+    <div class="col-12 col-sm-6 col-md-6 col-lg-4 col-xl-3 mb-4">
+        <div class="customer-card">
+            <div class="d-flex align-items-start mb-3">
+                <div class="customer-avatar me-3">
+                    {{ customer.first_name|first|upper }}{{ customer.last_name|first|upper }}
+                </div>
+                <div class="flex-grow-1">
+                    <div class="d-flex justify-content-between align-items-start">
+                        <div>
+                            <h6 class="mb-1">{{ customer.get_full_name }}</h6>
+                            <small class="text-muted">{{ customer.email }}</small>
+                        </div>
+                        <span class="customer-tier tier-{{ customer_data.tier|default:'bronze'|lower }}">
+                            {{ customer_data.tier|default:'Bronze' }}
+                        </span>
+                    </div>
+                    <p class="mb-2">
+                        <i class="fas fa-phone me-2 text-muted"></i>
+                        {{ customer.phone|default:"No phone" }}
+                    </p>
+                </div>
+            </div>
+            
+            <div class="row mb-3">
+                <div class="col-6">
+                    <div class="stats-badge">
+                        <i class="fas fa-calendar-check me-1"></i>
+                        <strong>{{ customer_data.booking_count }}</strong> Bookings
+                    </div>
+                </div>
+                <div class="col-6">
+                    <div class="stats-badge">
+                        <i class="fas fa-pound-sign me-1"></i>
+                        <strong>£{{ customer_data.total_spent|floatformat:2 }}</strong> Spent
+                    </div>
+                </div>
+            </div>
+            
+            <div class="d-flex justify-content-between">
+                <small class="text-muted">
+                    <i class="fas fa-calendar-alt me-1"></i>
+                    Joined {{ customer.date_joined|date:"M d, Y" }}
+                </small>
+                <div>
+                    <button class="btn btn-sm btn-outline-primary" onclick="viewCustomerDetails('{{ customer.id }}')">
+                        <i class="fas fa-eye"></i> View
+                    </button>
+                    <a href="mailto:{{ customer.email }}" class="btn btn-sm btn-outline-success">
+                        <i class="fas fa-envelope"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endwith %}
+    {% empty %}
+    <div class="col-12">
+        <div class="card text-center py-5">
+            <i class="fas fa-users fa-3x text-muted mb-3"></i>
+            <h5 class="text-muted">No customers found</h5>
+            <p class="text-muted">Try changing your search criteria</p>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Customer Details Modal -->
+<div class="modal fade" id="customerDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Customer Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="customerDetailsContent">
+                <!-- Content will be loaded via AJAX -->
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function viewCustomerDetails(customerId) {
+        // This would typically be an AJAX call to fetch customer details
+        const modalContent = `
+            <div class="row">
+                <div class="col-md-4 text-center">
+                    <div class="customer-avatar mx-auto mb-3" style="width: 100px; height: 100px; font-size: 2.5rem;">
+                        JD
+                    </div>
+                    <h5>John Doe</h5>
+                    <span class="badge bg-warning">Gold Tier</span>
+                </div>
+                <div class="col-md-8">
+                    <div class="row mb-3">
+                        <div class="col-6">
+                            <h6>Contact Info</h6>
+                            <p><i class="fas fa-envelope me-2"></i> john@example.com</p>
+                            <p><i class="fas fa-phone me-2"></i> +44 1234 567890</p>
+                            <p><i class="fas fa-calendar-alt me-2"></i> Member since Jan 15, 2023</p>
+                        </div>
+                        <div class="col-6">
+                            <h6>Statistics</h6>
+                            <p><i class="fas fa-calendar-check me-2"></i> 12 Total Bookings</p>
+                            <p><i class="fas fa-pound-sign me-2"></i> £850.00 Total Spent</p>
+                            <p><i class="fas fa-star me-2"></i> Loyalty Points: 1250</p>
+                        </div>
+                    </div>
+                    
+                    <h6 class="mt-4">Recent Bookings</h6>
+                    <div class="list-group">
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <strong>Hydrating Facial</strong><br>
+                                    <small class="text-muted">Dec 15, 2024 • 2:00 PM</small>
+                                </div>
+                                <div>
+                                    <span class="badge bg-success">Completed</span>
+                                    <div class="text-end mt-1">£60.00</div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <strong>Manicure & Pedicure</strong><br>
+                                    <small class="text-muted">Dec 10, 2024 • 11:00 AM</small>
+                                </div>
+                                <div>
+                                    <span class="badge bg-success">Completed</span>
+                                    <div class="text-end mt-1">£45.00</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('customerDetailsContent').innerHTML = modalContent;
+        const modal = new bootstrap.Modal(document.getElementById('customerDetailsModal'));
+        modal.show();
+    }
+</script>
+{% endblock %}

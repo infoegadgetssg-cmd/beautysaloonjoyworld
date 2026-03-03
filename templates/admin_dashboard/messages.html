@@ -1,0 +1,343 @@
+<!-- templates/admin_dashboard/messages.html -->
+{% extends 'admin_dashboard/base.html' %}
+
+{% block title %}Messages Management | Joy World Beauty Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+    .message-card {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 15px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        border-left: 4px solid #6c757d;
+        cursor: pointer;
+        transition: all 0.3s;
+    }
+    
+    .message-card:hover {
+        transform: translateX(5px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    
+    .message-card.unread {
+        border-left-color: var(--primary-dark);
+        background-color: #f8f9fa;
+    }
+    
+    .message-card.urgent {
+        border-left-color: #dc3545;
+        background-color: #f8d7da;
+    }
+    
+    .sender-avatar {
+        width: 40px;
+        height: 40px;
+        background: linear-gradient(135deg, #6c757d, #495057);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 600;
+        font-size: 1rem;
+    }
+    
+    .unread-badge {
+        background: var(--primary-dark);
+        color: white;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 0.7rem;
+        font-weight: 600;
+    }
+    
+    .urgent-badge {
+        background: #dc3545;
+        color: white;
+        padding: 2px 8px;
+        border-radius: 10px;
+        font-size: 0.7rem;
+        font-weight: 600;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4>Messages Management</h4>
+    <div>
+        <span class="badge bg-primary">{{ total_messages }} Total Messages</span>
+        {% if unread_count > 0 %}
+        <span class="badge bg-warning ms-2">{{ unread_count }} Unread</span>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Filter Buttons -->
+<div class="d-flex gap-2 mb-4">
+    <button class="btn btn-outline-primary active" onclick="filterMessages('all')">All</button>
+    <button class="btn btn-outline-primary" onclick="filterMessages('unread')">
+        Unread {% if unread_count > 0 %}<span class="badge bg-danger ms-1">{{ unread_count }}</span>{% endif %}
+    </button>
+    <button class="btn btn-outline-primary" onclick="filterMessages('urgent')">Urgent</button>
+</div>
+
+<!-- Messages List -->
+<div id="messagesList">
+    {% for message in messages %}
+    <div class="message-card {% if not message.is_read %}unread{% endif %} {% if message.urgent %}urgent{% endif %}" 
+         onclick="viewMessage('{{ message.id }}')">
+        <div class="d-flex align-items-start">
+            <div class="sender-avatar me-3">
+                {{ message.name|first|upper }}
+            </div>
+            <div class="flex-grow-1">
+                <div class="d-flex justify-content-between align-items-start mb-2">
+                    <div>
+                        <h6 class="mb-1">{{ message.name }}</h6>
+                        <small class="text-muted">{{ message.email }}</small>
+                    </div>
+                    <div>
+                        {% if not message.is_read %}
+                        <span class="unread-badge me-2">New</span>
+                        {% endif %}
+                        {% if message.urgent %}
+                        <span class="urgent-badge">Urgent</span>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <h6 class="mb-2">{{ message.subject|default:"No Subject" }}</h6>
+                <p class="mb-2 text-muted">{{ message.message|truncatechars:150 }}</p>
+                
+                <div class="d-flex justify-content-between align-items-center">
+                    <small class="text-muted">
+                        <i class="fas fa-clock me-1"></i>
+                        {{ message.created_at|timesince }} ago
+                    </small>
+                    <div>
+                        {% if not message.is_read %}
+                        <button class="btn btn-sm btn-outline-success" onclick="markAsRead('{{ message.id }}', event)">
+                            <i class="fas fa-check"></i> Mark Read
+                        </button>
+                        {% endif %}
+                        <button class="btn btn-sm btn-outline-danger" onclick="deleteMessage('{{ message.id }}', event)">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% empty %}
+    <div class="card text-center py-5">
+        <i class="fas fa-envelope-open fa-3x text-muted mb-3"></i>
+        <h5 class="text-muted">No messages found</h5>
+        <p class="text-muted">All caught up!</p>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Message Details Modal -->
+<div class="modal fade" id="messageDetailsModal" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Message Details</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="messageDetailsContent">
+                <!-- Content will be loaded via AJAX -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+                <button type="button" class="btn btn-primary" onclick="replyToMessage()">
+                    <i class="fas fa-reply me-2"></i> Reply
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Reply Modal -->
+<div class="modal fade" id="replyModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Reply to Message</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="replyForm">
+                    <div class="mb-3">
+                        <label class="form-label">To</label>
+                        <input type="text" class="form-control" id="replyTo" readonly>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Subject</label>
+                        <input type="text" class="form-control" id="replySubject" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Message</label>
+                        <textarea class="form-control" id="replyMessage" rows="6" required></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-primary" onclick="sendReply()">Send Reply</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function filterMessages(filter) {
+        // Remove active class from all buttons
+        document.querySelectorAll('.btn-outline-primary').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        // Add active class to clicked button
+        event.target.classList.add('active');
+        
+        // In a real app, you would make an AJAX call to filter messages
+        console.log('Filtering messages by:', filter);
+        
+        // For demo, we'll just show a message
+        if (filter !== 'all') {
+            alert(`Filtering messages: ${filter} (This would filter via AJAX in a real app)`);
+        }
+    }
+    
+    function viewMessage(messageId) {
+        // Dummy message data
+        const modalContent = `
+            <div class="mb-4">
+                <div class="d-flex align-items-start mb-3">
+                    <div class="sender-avatar me-3" style="width: 60px; height: 60px; font-size: 1.5rem;">
+                        J
+                    </div>
+                    <div class="flex-grow-1">
+                        <h5>John Doe</h5>
+                        <p class="text-muted mb-1">john@example.com</p>
+                        <small class="text-muted">
+                            <i class="fas fa-clock me-1"></i>
+                            December 15, 2024 • 2:30 PM
+                        </small>
+                    </div>
+                </div>
+                
+                <h6 class="mb-3">Inquiry about bridal makeup package</h6>
+                
+                <div class="card bg-light border-0">
+                    <div class="card-body">
+                        <p>Hello,</p>
+                        <p>I'm planning my wedding for June 2025 and I'm interested in your bridal makeup package. Could you please send me more information about:</p>
+                        <ul>
+                            <li>The services included in the package</li>
+                            <li>Pricing details</li>
+                            <li>Available dates in June</li>
+                            <li>Whether trial sessions are included</li>
+                        </ul>
+                        <p>Also, I have sensitive skin - do you use hypoallergenic products?</p>
+                        <p>Looking forward to your response!</p>
+                        <p>Best regards,<br>John Doe</p>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.getElementById('messageDetailsContent').innerHTML = modalContent;
+        
+        // Set reply information
+        document.getElementById('replyTo').value = 'john@example.com';
+        document.getElementById('replySubject').value = 'Re: Inquiry about bridal makeup package';
+        
+        const modal = new bootstrap.Modal(document.getElementById('messageDetailsModal'));
+        modal.show();
+        
+        // Mark as read when viewed
+        markAsRead(messageId);
+    }
+    
+    function markAsRead(messageId, event) {
+        if (event) {
+            event.stopPropagation(); // Prevent triggering parent click
+        }
+        
+        console.log('Marking message as read:', messageId);
+        // In a real app, make AJAX call to mark as read
+        
+        // Update UI
+        const messageCard = event ? event.target.closest('.message-card') : null;
+        if (messageCard) {
+            messageCard.classList.remove('unread');
+            const badge = messageCard.querySelector('.unread-badge');
+            if (badge) badge.remove();
+        }
+        
+        // Update unread count
+        const unreadBadge = document.querySelector('.badge.bg-warning');
+        if (unreadBadge) {
+            let count = parseInt(unreadBadge.textContent);
+            count--;
+            if (count > 0) {
+                unreadBadge.textContent = `${count} Unread`;
+            } else {
+                unreadBadge.remove();
+            }
+        }
+    }
+    
+    function deleteMessage(messageId, event) {
+        if (event) {
+            event.stopPropagation(); // Prevent triggering parent click
+        }
+        
+        if (!confirm('Are you sure you want to delete this message?')) {
+            return;
+        }
+        
+        console.log('Deleting message:', messageId);
+        // In a real app, make AJAX call to delete
+        
+        // Remove from UI
+        if (event) {
+            event.target.closest('.message-card').remove();
+        }
+        
+        alert('Message deleted successfully');
+    }
+    
+    function replyToMessage() {
+        bootstrap.Modal.getInstance(document.getElementById('messageDetailsModal')).hide();
+        
+        const modal = new bootstrap.Modal(document.getElementById('replyModal'));
+        modal.show();
+    }
+    
+    function sendReply() {
+        const to = document.getElementById('replyTo').value;
+        const subject = document.getElementById('replySubject').value;
+        const message = document.getElementById('replyMessage').value;
+        
+        if (!subject || !message) {
+            alert('Please fill in all required fields');
+            return;
+        }
+        
+        console.log('Sending reply to:', to, 'Subject:', subject, 'Message:', message);
+        
+        alert('Reply sent successfully!');
+        bootstrap.Modal.getInstance(document.getElementById('replyModal')).hide();
+        
+        // Clear form
+        document.getElementById('replyForm').reset();
+    }
+</script>
+{% endblock %}

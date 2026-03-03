@@ -1,0 +1,826 @@
+<!-- templates/accounts/base_auth.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    {% load static %}
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>{% block title %}Joy World Home of Beauty{% endblock %}</title>
+
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@400;500;600;700&family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+
+    <!-- Bootstrap 5 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet" />
+
+    <!-- Font Awesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
+
+    <!-- AOS CSS -->
+    <link href="https://unpkg.com/aos@2.3.1/dist/aos.css" rel="stylesheet" />
+
+    <!-- Custom CSS -->
+    <style>
+      :root {
+        --primary-light: #f6e9f0;
+        --white: #ffffff;
+        --primary-medium: #d6a7c0;
+        --primary-dark: #a86ba3;
+        --dark: #333333;
+        --transition: all 0.3s ease;
+      }
+
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+
+      body {
+        font-family: "Poppins", sans-serif;
+        color: var(--dark);
+        line-height: 1.6;
+        overflow-x: hidden;
+        background: linear-gradient(135deg, var(--primary-light) 0%, #ffffff 100%);
+        min-height: 100vh;
+        display: flex;
+        flex-direction: column;
+      }
+
+      h1, h2, h3, h4, h5, h6 {
+        font-family: "Playfair Display", serif;
+        font-weight: 600;
+      }
+
+      /* Navigation */
+      .navbar {
+        background-color: var(--white);
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        padding: 15px 0;
+        transition: var(--transition);
+      }
+
+      .navbar-brand {
+        font-family: "Playfair Display", serif;
+        font-weight: 700;
+        font-size: 1.8rem;
+        color: var(--primary-dark) !important;
+      }
+
+      .nav-link {
+        font-weight: 500;
+        color: var(--dark) !important;
+        margin: 0 10px;
+        transition: var(--transition);
+      }
+
+      .nav-link:hover {
+        color: var(--primary-dark) !important;
+      }
+
+      .btn-primary {
+        background-color: var(--primary-dark);
+        border-color: var(--primary-dark);
+        padding: 12px 25px;
+        border-radius: 30px;
+        font-weight: 500;
+        transition: var(--transition);
+      }
+
+      .btn-primary:hover {
+        background-color: var(--primary-medium);
+        border-color: var(--primary-medium);
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(168, 107, 163, 0.3);
+      }
+
+      /* Auth Container */
+      .auth-container {
+        width: 100%;
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 100px 20px 60px;
+      }
+
+      .auth-card {
+        background-color: var(--white);
+        border-radius: 20px;
+        box-shadow: 0 15px 40px rgba(0, 0, 0, 0.1);
+        overflow: hidden;
+        width: 100%;
+        max-width: 1000px;
+        display: flex;
+        min-height: 600px;
+      }
+
+      .auth-hero {
+        flex: 1;
+        background: linear-gradient(135deg, var(--primary-dark), var(--primary-medium));
+        color: var(--white);
+        padding: 50px 40px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .auth-hero-content {
+        position: relative;
+        z-index: 2;
+      }
+
+      .auth-hero h2 {
+        font-size: 2.5rem;
+        margin-bottom: 20px;
+      }
+
+      .auth-hero p {
+        font-size: 1.1rem;
+        opacity: 0.9;
+        margin-bottom: 30px;
+      }
+
+      .auth-benefits {
+        list-style: none;
+        padding: 0;
+        margin-bottom: 40px;
+      }
+
+      .auth-benefits li {
+        padding: 10px 0;
+        position: relative;
+        padding-left: 35px;
+      }
+
+      .auth-benefits li:before {
+        content: "\f00c";
+        font-family: "Font Awesome 5 Free";
+        font-weight: 900;
+        position: absolute;
+        left: 0;
+        top: 10px;
+        width: 25px;
+        height: 25px;
+        background-color: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 0.8rem;
+      }
+
+      .auth-hero-pattern {
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm48 25c3.866 0 7-3.134 7-7s-3.134-7-7-7-7 3.134-7 7 3.134 7 7 7zm-43-7c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm63 31c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM34 90c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zm56-76c1.657 0 3-1.343 3-3s-1.343-3-3-3-3 1.343-3 3 1.343 3 3 3zM12 86c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm28-65c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm23-11c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-6 60c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm29 22c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zM32 63c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm57-13c2.76 0 5-2.24 5-5s-2.24-5-5-5-5 2.24-5 5 2.24 5 5 5zm-9-21c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM60 91c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM35 41c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2zM12 60c1.105 0 2-.895 2-2s-.895-2-2-2-2 .895-2 2 .895 2 2 2z' fill='%23ffffff' fill-opacity='0.1' fill-rule='evenodd'/%3E%3C/svg%3E");
+        opacity: 0.3;
+      }
+
+      .auth-form-section {
+        flex: 1;
+        padding: 50px 40px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+
+      .auth-header {
+        text-align: center;
+        margin-bottom: 40px;
+      }
+
+      .auth-header h2 {
+        color: var(--primary-dark);
+        margin-bottom: 10px;
+      }
+
+      .auth-header p {
+        color: #666;
+      }
+
+      .auth-tabs {
+        display: flex;
+        margin-bottom: 30px;
+        border-bottom: 1px solid #eee;
+      }
+
+      .auth-tab {
+        flex: 1;
+        text-align: center;
+        padding: 15px;
+        cursor: pointer;
+        font-weight: 500;
+        transition: var(--transition);
+        border-bottom: 2px solid transparent;
+      }
+
+      .auth-tab.active {
+        color: var(--primary-dark);
+        border-bottom: 2px solid var(--primary-dark);
+      }
+
+      .auth-form {
+        display: none;
+      }
+
+      .auth-form.active {
+        display: block;
+        animation: fadeIn 0.5s ease;
+      }
+
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+          transform: translateY(10px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .form-group {
+        margin-bottom: 20px;
+      }
+
+      .form-label {
+        font-weight: 500;
+        margin-bottom: 8px;
+        color: var(--dark);
+      }
+
+      .form-control {
+        padding: 12px 15px;
+        border-radius: 10px;
+        border: 1px solid #e0e0e0;
+        transition: var(--transition);
+        width: 100%;
+      }
+
+      .form-control:focus {
+        border-color: var(--primary-medium);
+        box-shadow: 0 0 0 0.2rem rgba(214, 167, 192, 0.25);
+      }
+
+      .password-input {
+        position: relative;
+      }
+
+      .password-toggle {
+        position: absolute;
+        right: 15px;
+        top: 50%;
+        transform: translateY(-50%);
+        background: none;
+        border: none;
+        color: #777;
+        cursor: pointer;
+      }
+
+      .form-options {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 25px;
+      }
+
+      .form-check {
+        display: flex;
+        align-items: center;
+      }
+
+      .form-check-input {
+        margin-right: 8px;
+      }
+
+      .forgot-password {
+        color: var(--primary-dark);
+        text-decoration: none;
+        font-size: 0.9rem;
+      }
+
+      .forgot-password:hover {
+        text-decoration: underline;
+      }
+
+      .auth-divider {
+        text-align: center;
+        margin: 25px 0;
+        position: relative;
+      }
+
+      .auth-divider:before {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 0;
+        right: 0;
+        height: 1px;
+        background-color: #eee;
+      }
+
+      .auth-divider span {
+        background-color: var(--white);
+        padding: 0 15px;
+        color: #777;
+        font-size: 0.9rem;
+      }
+
+      .social-auth {
+        display: flex;
+        gap: 15px;
+        margin-bottom: 25px;
+      }
+
+      .social-btn {
+        flex: 1;
+        padding: 12px;
+        border: 1px solid #e0e0e0;
+        border-radius: 10px;
+        background: var(--white);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
+        transition: var(--transition);
+        cursor: pointer;
+      }
+
+      .social-btn:hover {
+        background-color: #f9f9f9;
+        transform: translateY(-2px);
+      }
+
+      .social-btn.google {
+        color: #db4437;
+      }
+
+      .social-btn.facebook {
+        color: #4267b2;
+      }
+
+      .auth-footer {
+        text-align: center;
+        margin-top: 30px;
+        color: #666;
+      }
+
+      .auth-footer a {
+        color: var(--primary-dark);
+        text-decoration: none;
+        font-weight: 500;
+      }
+
+      .auth-footer a:hover {
+        text-decoration: underline;
+      }
+
+      /* Footer */
+      footer {
+        background-color: var(--dark);
+        color: var(--white);
+        padding: 60px 0 20px;
+        width: 100%;
+        margin-top: auto;
+      }
+
+      .footer-logo {
+        font-family: "Playfair Display", serif;
+        font-weight: 700;
+        font-size: 1.8rem;
+        color: var(--white);
+        margin-bottom: 20px;
+      }
+
+      .footer-links h5 {
+        margin-bottom: 20px;
+        position: relative;
+        padding-bottom: 10px;
+      }
+
+      .footer-links h5:after {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 40px;
+        height: 2px;
+        background-color: var(--primary-medium);
+      }
+
+      .footer-links ul {
+        list-style: none;
+        padding: 0;
+      }
+
+      .footer-links ul li {
+        margin-bottom: 10px;
+      }
+
+      .footer-links ul li a {
+        color: #cccccc;
+        text-decoration: none;
+        transition: var(--transition);
+      }
+
+      .footer-links ul li a:hover {
+        color: var(--primary-medium);
+        padding-left: 5px;
+      }
+
+      .social-icons a {
+        display: inline-block;
+        width: 40px;
+        height: 40px;
+        background-color: rgba(255, 255, 255, 0.1);
+        border-radius: 50%;
+        text-align: center;
+        line-height: 40px;
+        margin-right: 10px;
+        color: var(--white);
+        transition: var(--transition);
+      }
+
+      .social-icons a:hover {
+        background-color: var(--primary-medium);
+        transform: translateY(-5px);
+      }
+
+      .copyright {
+        border-top: 1px solid rgba(255, 255, 255, 0.1);
+        padding-top: 20px;
+        margin-top: 40px;
+        text-align: center;
+        color: #cccccc;
+        font-size: 0.9rem;
+      }
+
+      /* Responsive */
+      @media (max-width: 992px) {
+        .auth-card {
+          flex-direction: column;
+          max-width: 500px;
+        }
+
+        .auth-hero {
+          padding: 40px 30px;
+        }
+
+        .auth-form-section {
+          padding: 40px 30px;
+        }
+      }
+
+      @media (max-width: 576px) {
+        .auth-container {
+          padding: 80px 15px 40px;
+        }
+
+        .auth-hero {
+          padding: 30px 20px;
+        }
+
+        .auth-form-section {
+          padding: 30px 20px;
+        }
+
+        .social-auth {
+          flex-direction: column;
+        }
+
+        .form-options {
+          flex-direction: column;
+          align-items: flex-start;
+          gap: 15px;
+        }
+      }
+
+      /* Loading Spinner */
+      .spinner-border {
+        width: 1.5rem;
+        height: 1.5rem;
+        border-width: 0.2em;
+      }
+
+      /* Password Strength Indicator */
+      .password-strength {
+        margin-top: 5px;
+        height: 5px;
+        border-radius: 5px;
+        background-color: #eee;
+        overflow: hidden;
+      }
+
+      .password-strength-bar {
+        height: 100%;
+        width: 0%;
+        transition: var(--transition);
+      }
+
+      .strength-weak {
+        background-color: #ff4757;
+        width: 25%;
+      }
+
+      .strength-medium {
+        background-color: #ffa502;
+        width: 50%;
+      }
+
+      .strength-strong {
+        background-color: #2ed573;
+        width: 75%;
+      }
+
+      .strength-very-strong {
+        background-color: #1e90ff;
+        width: 100%;
+      }
+
+      .password-strength-text {
+        font-size: 0.8rem;
+        margin-top: 5px;
+        color: #777;
+      }
+
+      /* Smooth transition for form switching */
+      .auth-form {
+        transition: opacity 0.3s ease, transform 0.3s ease;
+      }
+
+      /* Custom animation for auth card entrance */
+      @keyframes slideInCard {
+        from {
+          opacity: 0;
+          transform: translateY(50px) scale(0.95);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0) scale(1);
+        }
+      }
+
+      .auth-card-enter {
+        animation: slideInCard 0.8s ease-out forwards;
+      }
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <!-- Navigation -->
+    <nav class="navbar navbar-expand-lg navbar-light" data-aos="fade-down" data-aos-duration="800">
+      <div class="container">
+        <a class="navbar-brand" href="{% url 'index' %}">Joy World</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
+          <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="collapse navbar-collapse" id="navbarNav">
+          <ul class="navbar-nav ms-auto">
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'index' %}">Home</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'services:services_list' %}">Services</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'booking:booking' %}">Book Now</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'shop:shop' %}">Shop</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'gallery:gallery' %}">Gallery</a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'contact:contact' %}">Contact</a>
+            </li>
+            <!-- User-specific links -->
+            {% if user.is_authenticated %}
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'user_dashboard:dashboard' %}">
+                <i class="fas fa-user-circle me-2"></i>My Account
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="#" id="cart-icon">
+                <i class="fas fa-shopping-cart"></i>
+                <span class="cart-count">0</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'account_logout' %}">
+                <i class="fas fa-sign-out-alt me-2"></i>Logout
+              </a>
+            </li>
+            {% else %}
+            <li class="nav-item">
+              <a class="nav-link" href="#" id="cart-icon">
+                <i class="fas fa-shopping-cart"></i>
+                <span class="cart-count">0</span>
+              </a>
+            </li>
+            <li class="nav-item">
+              <a class="nav-link active" href="{% url 'account_login' %}">
+                <i class="fas fa-sign-in-alt me-2"></i>Login
+              </a>
+            </li>
+            {% endif %}
+          </ul>
+        </div>
+      </div>
+    </nav>
+
+    <!-- Main Content -->
+    {% block content %}{% endblock %}
+
+    <!-- Footer -->
+    <footer>
+      <div class="container">
+        <div class="row">
+          <div class="col-lg-4 col-md-6 mb-4 mb-md-0" data-aos="fade-up" data-aos-delay="100">
+            <div class="footer-logo">Joy World</div>
+            <p>
+              Luxury beauty salon offering premium services in Manchester.
+              Experience the perfect blend of expertise and elegance.
+            </p>
+            <div class="social-icons mt-4">
+              <a href="#"><i class="fab fa-facebook-f"></i></a>
+              <a href="#"><i class="fab fa-instagram"></i></a>
+              <a href="#"><i class="fab fa-twitter"></i></a>
+              <a href="#"><i class="fab fa-pinterest"></i></a>
+            </div>
+          </div>
+          <div class="col-lg-2 col-md-6 mb-4 mb-md-0" data-aos="fade-up" data-aos-delay="200">
+            <div class="footer-links">
+              <h5>Quick Links</h5>
+              <ul>
+                <li><a href="{% url 'index' %}">Home</a></li>
+                <li><a href="{% url 'services:services_list' %}">Services</a></li>
+                <li><a href="{% url 'booking:booking' %}">Book Now</a></li>
+                <li><a href="{% url 'shop:shop' %}">Shop</a></li>
+                <li><a href="{% url 'gallery:gallery' %}">Gallery</a></li>
+              </ul>
+            </div>
+          </div>
+          <div class="col-lg-3 col-md-6 mb-4 mb-md-0" data-aos="fade-up" data-aos-delay="300">
+            <div class="footer-links">
+              <h5>Services</h5>
+              <ul>
+                <li><a href="{% url 'services:services_list' %}">Facials & Skincare</a></li>
+                <li><a href="{% url 'services:services_list' %}">Makeup Artistry</a></li>
+                <li><a href="{% url 'services:services_list' %}">Manicure & Pedicure</a></li>
+                <li><a href="{% url 'services:services_list' %}">Hair Styling</a></li>
+                <li><a href="{% url 'services:services_list' %}">Waxing</a></li>
+              </ul>
+            </div>
+          </div>
+          <div class="col-lg-3 col-md-6" data-aos="fade-up" data-aos-delay="400">
+            <div class="footer-links">
+              <h5>Contact Info</h5>
+              <ul>
+                <li>
+                  <i class="fas fa-map-marker-alt me-2"></i> 123 Beauty Street,
+                  Manchester
+                </li>
+                <li><i class="fas fa-phone me-2"></i> +44 161 123 4567</li>
+                <li>
+                  <i class="fas fa-envelope me-2"></i> info@joyworldbeauty.com
+                </li>
+                <li>
+                  <i class="fas fa-clock me-2"></i> Mon-Sat: 9am-7pm, Sun:
+                  10am-5pm
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+        <div class="copyright" data-aos="fade-up" data-aos-delay="500">
+          <p>&copy; {% now "Y" %} Joy World Home of Beauty. All rights reserved.</p>
+        </div>
+      </div>
+    </footer>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- AOS JS -->
+    <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
+
+    <!-- Custom JavaScript -->
+    <script>
+      // Initialize AOS
+      AOS.init({
+        duration: 800,
+        easing: "ease-in-out",
+        once: false,
+        mirror: true,
+        offset: 100,
+        delay: 100,
+        throttleDelay: 99,
+        debounceDelay: 50,
+      });
+
+      // Password toggle functionality
+      document.addEventListener('DOMContentLoaded', function() {
+        // Password toggle visibility
+        document.querySelectorAll('.password-toggle').forEach((button) => {
+          button.addEventListener('click', function() {
+            const targetId = this.getAttribute('data-target');
+            const passwordInput = document.getElementById(targetId);
+            const icon = this.querySelector('i');
+
+            if (passwordInput.type === 'password') {
+              passwordInput.type = 'text';
+              icon.classList.remove('fa-eye');
+              icon.classList.add('fa-eye-slash');
+            } else {
+              passwordInput.type = 'password';
+              icon.classList.remove('fa-eye-slash');
+              icon.classList.add('fa-eye');
+            }
+          });
+        });
+
+        // Cart functionality
+        let cart = JSON.parse(localStorage.getItem("cart")) || [];
+
+        function updateCartCount() {
+          const cartCount = document.querySelector(".cart-count");
+          if (cartCount) {
+            cartCount.textContent = cart.reduce(
+              (total, item) => total + item.quantity,
+              0
+            );
+          }
+        }
+
+        updateCartCount();
+      });
+
+      // Password strength checker
+      function checkPasswordStrength(password) {
+        const strengthBar = document.getElementById('passwordStrengthBar');
+        const strengthText = document.getElementById('passwordStrengthText');
+
+        if (!strengthBar || !strengthText) return;
+
+        // Reset
+        strengthBar.className = 'password-strength-bar';
+        strengthBar.style.width = '0%';
+
+        if (password.length === 0) {
+          strengthText.textContent = 'Password strength';
+          return;
+        }
+
+        let strength = 0;
+        // Length check
+        if (password.length >= 8) strength += 1;
+        // Contains lowercase
+        if (/[a-z]/.test(password)) strength += 1;
+        // Contains uppercase
+        if (/[A-Z]/.test(password)) strength += 1;
+        // Contains numbers
+        if (/[0-9]/.test(password)) strength += 1;
+        // Contains special characters
+        if (/[^A-Za-z0-9]/.test(password)) strength += 1;
+
+        // Update UI based on strength
+        switch (strength) {
+          case 0:
+          case 1:
+            strengthBar.className = 'password-strength-bar strength-weak';
+            strengthText.textContent = 'Weak password';
+            strengthText.style.color = '#ff4757';
+            break;
+          case 2:
+            strengthBar.className = 'password-strength-bar strength-medium';
+            strengthText.textContent = 'Medium password';
+            strengthText.style.color = '#ffa502';
+            break;
+          case 3:
+            strengthBar.className = 'password-strength-bar strength-strong';
+            strengthText.textContent = 'Strong password';
+            strengthText.style.color = '#2ed573';
+            break;
+          case 4:
+          case 5:
+            strengthBar.className = 'password-strength-bar strength-very-strong';
+            strengthText.textContent = 'Very strong password';
+            strengthText.style.color = '#1e90ff';
+            break;
+        }
+      }
+    </script>
+
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

@@ -1,0 +1,273 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Checkout | Joy World Beauty Shop{% endblock %}
+
+{% block extra_css %}
+<style>
+    .checkout-page {
+        padding: 80px 0;
+        background-color: #f9f9f9;
+    }
+    
+    .checkout-header {
+        background: linear-gradient(135deg, var(--primary-dark), var(--primary-medium));
+        color: white;
+        border-radius: 15px;
+        padding: 25px;
+        margin-bottom: 30px;
+    }
+    
+    .checkout-section {
+        background: white;
+        border-radius: 15px;
+        padding: 30px;
+        margin-bottom: 30px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+    }
+    
+    .section-title {
+        color: var(--primary-dark);
+        margin-bottom: 25px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid var(--primary-light);
+    }
+    
+    .order-summary-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 12px 0;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .order-summary-item.total {
+        font-size: 1.3rem;
+        font-weight: 600;
+        color: var(--primary-dark);
+        border-bottom: none;
+        padding-top: 20px;
+    }
+    
+    .product-thumbnail {
+        width: 60px;
+        height: 60px;
+        object-fit: cover;
+        border-radius: 8px;
+    }
+    
+    .payment-method {
+        margin-bottom: 15px;
+    }
+    
+    .payment-method label {
+        display: flex;
+        align-items: center;
+        padding: 15px;
+        border: 2px solid #eee;
+        border-radius: 10px;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+    
+    .payment-method input:checked + label {
+        border-color: var(--primary-dark);
+        background-color: var(--primary-light);
+    }
+    
+    .payment-icon {
+        font-size: 1.5rem;
+        margin-right: 10px;
+        color: var(--primary-dark);
+    }
+    
+    @media (max-width: 768px) {
+        .checkout-section {
+            padding: 20px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="checkout-page">
+    <div class="container">
+        <div class="checkout-header" data-aos="fade-down">
+            <h1><i class="fas fa-shopping-bag me-3"></i>Checkout</h1>
+            <p class="mb-0">Complete your order in just a few steps</p>
+        </div>
+
+        <form method="post" action="{% url 'shop:checkout' %}">
+            {% csrf_token %}
+            
+            <div class="row">
+                <div class="col-lg-8">
+                    <!-- Shipping Information -->
+                    <div class="checkout-section" data-aos="fade-right">
+                        <h3 class="section-title">
+                            <i class="fas fa-shipping-fast me-2"></i>Shipping Information
+                        </h3>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Full Name *</label>
+                                <input type="text" class="form-control" name="full_name" required
+                                       value="{{ user.get_full_name|default:'' }}">
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Email Address *</label>
+                                <input type="email" class="form-control" name="email" required
+                                       value="{{ user.email|default:'' }}">
+                            </div>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Phone Number *</label>
+                            <input type="tel" class="form-control" name="phone" required>
+                        </div>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Shipping Address *</label>
+                            <textarea class="form-control" name="shipping_address" rows="3" required></textarea>
+                        </div>
+                        
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">City *</label>
+                                <input type="text" class="form-control" name="city" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label class="form-label">Postal Code *</label>
+                                <input type="text" class="form-control" name="postal_code" required>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Payment Method -->
+                    <div class="checkout-section" data-aos="fade-right" data-aos-delay="100">
+                        <h3 class="section-title">
+                            <i class="fas fa-credit-card me-2"></i>Payment Method
+                        </h3>
+                        
+                        <div class="payment-method">
+                            <input type="radio" name="payment_method" value="card" id="card" checked class="d-none">
+                            <label for="card">
+                                <i class="fas fa-credit-card payment-icon"></i>
+                                <div>
+                                    <strong>Credit/Debit Card</strong>
+                                    <p class="mb-0 small text-muted">Pay securely with your card</p>
+                                </div>
+                            </label>
+                        </div>
+                        
+                        <div class="payment-method">
+                            <input type="radio" name="payment_method" value="paypal" id="paypal" class="d-none">
+                            <label for="paypal">
+                                <i class="fab fa-paypal payment-icon"></i>
+                                <div>
+                                    <strong>PayPal</strong>
+                                    <p class="mb-0 small text-muted">Pay with your PayPal account</p>
+                                </div>
+                            </label>
+                        </div>
+                        
+                        <div class="payment-method">
+                            <input type="radio" name="payment_method" value="cod" id="cod" class="d-none">
+                            <label for="cod">
+                                <i class="fas fa-money-bill-wave payment-icon"></i>
+                                <div>
+                                    <strong>Cash on Delivery</strong>
+                                    <p class="mb-0 small text-muted">Pay when you receive your order</p>
+                                </div>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-lg-4">
+                    <!-- Order Summary -->
+                    <div class="checkout-section" data-aos="fade-left">
+                        <h3 class="section-title">
+                            <i class="fas fa-receipt me-2"></i>Order Summary
+                        </h3>
+                        
+                        {% for item in cart.items.all %}
+                        <div class="order-summary-item">
+                            <div>
+                                <div class="d-flex align-items-center">
+                                    <img src="{{ item.product.get_main_image_url }}" 
+                                         alt="{{ item.product.name }}" 
+                                         class="product-thumbnail me-3">
+                                    <div>
+                                        <strong>{{ item.product.name }}</strong>
+                                        <p class="mb-0 small text-muted">Qty: {{ item.quantity }}</p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-end">
+                                <div>£{{ item.total_price }}</div>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        
+                        <div class="order-summary-item">
+                            <span>Subtotal</span>
+                            <span>£{{ cart.subtotal }}</span>
+                        </div>
+                        
+                        <div class="order-summary-item">
+                            <span>Shipping</span>
+                            <span>£0.00</span>
+                        </div>
+                        
+                        <div class="order-summary-item">
+                            <span>Tax</span>
+                            <span>£0.00</span>
+                        </div>
+                        
+                        <div class="order-summary-item total">
+                            <span>Total</span>
+                            <span>£{{ cart.subtotal }}</span>
+                        </div>
+                        
+                        <div class="mt-4">
+                            <div class="form-check mb-3">
+                                <input class="form-check-input" type="checkbox" id="terms" required>
+                                <label class="form-check-label" for="terms">
+                                    I agree to the <a href="#" target="_blank">terms and conditions</a> *
+                                </label>
+                            </div>
+                            
+                            <button type="submit" class="btn btn-primary btn-lg w-100">
+                                <i class="fas fa-lock me-2"></i>Place Order
+                            </button>
+                        </div>
+                        
+                        <p class="text-muted small mt-3">
+                            <i class="fas fa-lock me-1"></i>Your payment information is secure and encrypted
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    AOS.init({ duration: 800 });
+    
+    // Form validation
+    const form = document.querySelector('form');
+    form.addEventListener('submit', function(e) {
+        const terms = document.getElementById('terms');
+        if (!terms.checked) {
+            e.preventDefault();
+            alert('Please agree to the terms and conditions.');
+            terms.focus();
+        }
+    });
+});
+</script>
+{% endblock %}

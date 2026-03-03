@@ -1,0 +1,38 @@
+<!-- templates/gallery/simple_gallery.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container mt-5 pt-5">
+    <h1>Gallery Test</h1>
+    
+    {% if gallery_images %}
+        <div class="row">
+            {% for image in gallery_images %}
+            <div class="col-md-4 mb-4">
+                <div class="card">
+                    {% if image.image %}
+                    <img src="{{ image.image.url }}" class="card-img-top" alt="{{ image.title }}" 
+                         style="height: 250px; object-fit: cover;">
+                    {% else %}
+                    <div class="card-img-top bg-light d-flex align-items-center justify-content-center" 
+                         style="height: 250px;">
+                        <span class="text-muted">No Image</span>
+                    </div>
+                    {% endif %}
+                    <div class="card-body">
+                        <h5 class="card-title">{{ image.title }}</h5>
+                        <p class="card-text">{{ image.description|truncatechars:100 }}</p>
+                        <span class="badge bg-primary">{{ image.category.name }}</span>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    {% else %}
+        <div class="alert alert-info">
+            No gallery images found. Please add some images from the admin panel.
+        </div>
+    {% endif %}
+</div>
+{% endblock %}

@@ -1,0 +1,211 @@
+<!-- templates/accounts/register.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Sign Up | Joy World Home of Beauty{% endblock %}
+
+{% block content %}
+<div class="auth-container">
+    <div class="auth-card auth-card-enter">
+        <!-- Auth Hero Section -->
+        <div class="auth-hero" data-aos="fade-right" data-aos-duration="1000" data-aos-delay="200">
+            <div class="auth-hero-pattern"></div>
+            <div class="auth-hero-content">
+                <h2 data-aos="fade-up" data-aos-delay="300">Join Joy World</h2>
+                <p data-aos="fade-up" data-aos-delay="400">
+                    Create your account and unlock exclusive benefits for our valued clients.
+                </p>
+                <ul class="auth-benefits">
+                    <li data-aos="fade-left" data-aos-delay="500">Track your appointment history</li>
+                    <li data-aos="fade-left" data-aos-delay="600">Save your favorite services</li>
+                    <li data-aos="fade-left" data-aos-delay="700">Receive personalized recommendations</li>
+                    <li data-aos="fade-left" data-aos-delay="800">Get exclusive member discounts</li>
+                    <li data-aos="fade-left" data-aos-delay="900">Earn loyalty points with every visit</li>
+                </ul>
+            </div>
+        </div>
+
+        <!-- Register Form Section -->
+        <div class="auth-form-section" data-aos="fade-left" data-aos-duration="1000" data-aos-delay="400">
+            <div class="auth-header">
+                <h2 data-aos="fade-up" data-aos-delay="500">Create Account</h2>
+                <p data-aos="fade-up" data-aos-delay="600">Join our beauty community today</p>
+            </div>
+
+            <!-- Django Messages -->
+            {% if messages %}
+            <div class="mb-3">
+                {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endfor %}
+            </div>
+            {% endif %}
+
+            <!-- Allauth Signup Form -->
+            <form method="post" action="{% url 'account_signup' %}" class="auth-form active">
+                {% csrf_token %}
+                
+                {% if form.non_field_errors %}
+                <div class="alert alert-danger alert-dismissible fade show" role="alert">
+                    {% for error in form.non_field_errors %}
+                    {{ error }}
+                    {% endfor %}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                </div>
+                {% endif %}
+
+                <div class="form-group" data-aos="fade-up" data-aos-delay="800">
+                    <label for="id_email" class="form-label">Email Address *</label>
+                    <input type="email" 
+                           name="email" 
+                           class="form-control {% if form.email.errors %}is-invalid{% endif %}" 
+                           id="id_email" 
+                           required 
+                           autofocus
+                           value="{{ form.email.value|default:'' }}"
+                           placeholder="Enter your email address">
+                    {% if form.email.errors %}
+                    <div class="invalid-feedback">{{ form.email.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                <div class="form-group" data-aos="fade-up" data-aos-delay="900">
+                    <label for="id_password1" class="form-label">Password *</label>
+                    <div class="password-input">
+                        <input type="password" 
+                               name="password1" 
+                               class="form-control {% if form.password1.errors %}is-invalid{% endif %}" 
+                               id="id_password1" 
+                               required 
+                               placeholder="Create a password">
+                        <button type="button" class="password-toggle" data-target="id_password1">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                    {% if form.password1.errors %}
+                    <div class="text-danger small mt-1">{{ form.password1.errors.0 }}</div>
+                    {% endif %}
+                    <div class="password-strength">
+                        <div class="password-strength-bar" id="passwordStrengthBar"></div>
+                    </div>
+                    <div class="password-strength-text" id="passwordStrengthText">Password strength</div>
+                </div>
+
+                <div class="form-group" data-aos="fade-up" data-aos-delay="1000">
+                    <label for="id_password2" class="form-label">Confirm Password *</label>
+                    <div class="password-input">
+                        <input type="password" 
+                               name="password2" 
+                               class="form-control {% if form.password2.errors %}is-invalid{% endif %}" 
+                               id="id_password2" 
+                               required 
+                               placeholder="Confirm your password">
+                        <button type="button" class="password-toggle" data-target="id_password2">
+                            <i class="fas fa-eye"></i>
+                        </button>
+                    </div>
+                    {% if form.password2.errors %}
+                    <div class="text-danger small mt-1">{{ form.password2.errors.0 }}</div>
+                    {% endif %}
+                </div>
+
+                {% if redirect_field_value %}
+                <input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}" />
+                {% endif %}
+
+                <button type="submit" class="btn btn-primary w-100 mb-3" data-aos="fade-up" data-aos-delay="1100">
+                    Create Account
+                </button>
+
+                <div class="auth-footer" data-aos="fade-up" data-aos-delay="1200">
+                    Already have an account?
+                    <a href="{% url 'account_login' %}">Sign in</a>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Password toggle
+        document.querySelectorAll('.password-toggle').forEach((button) => {
+            button.addEventListener('click', function() {
+                const targetId = this.getAttribute('data-target');
+                const passwordInput = document.getElementById(targetId);
+                const icon = this.querySelector('i');
+
+                if (passwordInput.type === 'password') {
+                    passwordInput.type = 'text';
+                    icon.classList.remove('fa-eye');
+                    icon.classList.add('fa-eye-slash');
+                } else {
+                    passwordInput.type = 'password';
+                    icon.classList.remove('fa-eye-slash');
+                    icon.classList.add('fa-eye');
+                }
+            });
+        });
+
+        // Password strength indicator
+        const passwordInput = document.getElementById('id_password1');
+        if (passwordInput) {
+            passwordInput.addEventListener('input', function() {
+                checkPasswordStrength(this.value);
+            });
+        }
+    });
+
+    function checkPasswordStrength(password) {
+        const strengthBar = document.getElementById('passwordStrengthBar');
+        const strengthText = document.getElementById('passwordStrengthText');
+
+        if (!strengthBar || !strengthText) return;
+
+        strengthBar.className = 'password-strength-bar';
+        strengthBar.style.width = '0%';
+
+        if (password.length === 0) {
+            strengthText.textContent = 'Password strength';
+            return;
+        }
+
+        let strength = 0;
+        if (password.length >= 8) strength += 1;
+        if (/[a-z]/.test(password)) strength += 1;
+        if (/[A-Z]/.test(password)) strength += 1;
+        if (/[0-9]/.test(password)) strength += 1;
+        if (/[^A-Za-z0-9]/.test(password)) strength += 1;
+
+        switch (strength) {
+            case 0:
+            case 1:
+                strengthBar.className = 'password-strength-bar strength-weak';
+                strengthText.textContent = 'Weak password';
+                strengthText.style.color = '#ff4757';
+                break;
+            case 2:
+                strengthBar.className = 'password-strength-bar strength-medium';
+                strengthText.textContent = 'Medium password';
+                strengthText.style.color = '#ffa502';
+                break;
+            case 3:
+                strengthBar.className = 'password-strength-bar strength-strong';
+                strengthText.textContent = 'Strong password';
+                strengthText.style.color = '#2ed573';
+                break;
+            case 4:
+            case 5:
+                strengthBar.className = 'password-strength-bar strength-very-strong';
+                strengthText.textContent = 'Very strong password';
+                strengthText.style.color = '#1e90ff';
+                break;
+        }
+    }
+</script>
+{% endblock %}

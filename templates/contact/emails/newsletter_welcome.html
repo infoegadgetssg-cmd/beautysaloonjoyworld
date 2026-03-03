@@ -1,0 +1,48 @@
+<!-- templates/contact/emails/newsletter_welcome.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #a86ba3, #d6a7c0); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { padding: 30px; background: #f9f9f9; border-radius: 0 0 10px 10px; }
+        .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+        .offer { background: #fff; border: 2px dashed #a86ba3; padding: 20px; margin: 20px 0; border-radius: 10px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Welcome to Joy World Beauty!</h1>
+        </div>
+        <div class="content">
+            <h2>Hello {{ name }},</h2>
+            <p>Welcome to the Joy World Beauty family! We're thrilled to have you join our newsletter community.</p>
+            
+            <div class="offer">
+                <h3>🎁 Your Welcome Gift</h3>
+                <p>As a special thank you, here's a 10% discount on your first purchase:</p>
+                <p style="text-align: center; font-size: 24px; font-weight: bold; color: #a86ba3;">WELCOME10</p>
+            </div>
+            
+            <p>In our newsletter, you'll receive:</p>
+            <ul>
+                <li>Beauty tips and trends</li>
+                <li>Exclusive offers and discounts</li>
+                <li>New product announcements</li>
+                <li>Event invitations</li>
+                <li>Seasonal beauty guides</li>
+            </ul>
+            
+            <p>Stay beautiful,<br>
+            The Joy World Team</p>
+        </div>
+        <div class="footer">
+            <p>© 2024 Joy World Home of Beauty. All rights reserved.</p>
+            <p>123 Beauty Street, Manchester M1 1AB, United Kingdom</p>
+            <p><a href="{{ site_url }}/contact/unsubscribe/">Unsubscribe</a></p>
+        </div>
+    </div>
+</body>
+</html>

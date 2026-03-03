@@ -1,0 +1,524 @@
+<!-- templates/admin_dashboard/settings.html -->
+{% extends 'admin_dashboard/base.html' %}
+
+{% block title %}Settings | Joy World Beauty Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+    .settings-card {
+        background: white;
+        border-radius: 10px;
+        padding: 25px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+    
+    .settings-section {
+        margin-bottom: 30px;
+        padding-bottom: 20px;
+        border-bottom: 1px solid #e9ecef;
+    }
+    
+    .settings-section:last-child {
+        border-bottom: none;
+        margin-bottom: 0;
+        padding-bottom: 0;
+    }
+    
+    .color-preview {
+        width: 30px;
+        height: 30px;
+        border-radius: 5px;
+        border: 1px solid #dee2e6;
+        margin-right: 10px;
+    }
+    
+    .logo-preview {
+        width: 150px;
+        height: 150px;
+        border-radius: 10px;
+        border: 2px dashed #dee2e6;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+        margin-bottom: 15px;
+    }
+    
+    .logo-preview img {
+        max-width: 100%;
+        max-height: 100%;
+        object-fit: contain;
+    }
+    
+    .toggle-switch {
+        position: relative;
+        display: inline-block;
+        width: 60px;
+        height: 34px;
+    }
+    
+    .toggle-switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    
+    .toggle-slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: .4s;
+        border-radius: 34px;
+    }
+    
+    .toggle-slider:before {
+        position: absolute;
+        content: "";
+        height: 26px;
+        width: 26px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+    }
+    
+    input:checked + .toggle-slider {
+        background-color: #28a745;
+    }
+    
+    input:checked + .toggle-slider:before {
+        transform: translateX(26px);
+    }
+    
+    .danger-zone {
+        background: #f8d7da;
+        border: 1px solid #f5c6cb;
+        border-radius: 10px;
+        padding: 20px;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4>Settings</h4>
+    <div>
+        <button type="submit" form="settingsForm" class="btn btn-primary">
+            <i class="fas fa-save me-2"></i> Save Changes
+        </button>
+    </div>
+</div>
+
+<form method="post" id="settingsForm" enctype="multipart/form-data">
+    {% csrf_token %}
+    
+    <!-- General Settings -->
+    <div class="settings-card">
+        <h5 class="mb-4">General Settings</h5>
+        
+        <div class="settings-section">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Business Name *</label>
+                    {{ form.site_name }}
+                    {% if form.site_name.errors %}
+                    <div class="text-danger small">{{ form.site_name.errors.0 }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Business Email *</label>
+                    {{ form.business_email }}
+                    {% if form.business_email.errors %}
+                    <div class="text-danger small">{{ form.business_email.errors.0 }}</div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Business Phone *</label>
+                    {{ form.business_phone }}
+                    {% if form.business_phone.errors %}
+                    <div class="text-danger small">{{ form.business_phone.errors.0 }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Business Address</label>
+                    {{ form.business_address }}
+                    {% if form.business_address.errors %}
+                    <div class="text-danger small">{{ form.business_address.errors.0 }}</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Logo Settings -->
+        <div class="settings-section">
+            <h6 class="mb-3">Logo & Branding</h6>
+            
+            <div class="row align-items-center">
+                <div class="col-md-4 mb-3">
+                    <div class="logo-preview">
+                        {% if settings.site_logo %}
+                        <img src="{{ settings.site_logo.url }}" alt="Current Logo">
+                        {% else %}
+                        <i class="fas fa-spa fa-3x text-muted"></i>
+                        {% endif %}
+                    </div>
+                </div>
+                <div class="col-md-8 mb-3">
+                    <label class="form-label">Upload Logo</label>
+                    <input type="file" class="form-control" name="site_logo" accept="image/*">
+                    <small class="text-muted">Recommended size: 300x100px, PNG format</small>
+                </div>
+            </div>
+            
+            <div class="row mt-3">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label d-flex align-items-center">
+                        <div class="color-preview" style="background-color: {{ settings.primary_color|default:'#a86ba3' }};"></div>
+                        Primary Color
+                    </label>
+                    {{ form.primary_color }}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label d-flex align-items-center">
+                        <div class="color-preview" style="background-color: {{ settings.secondary_color|default:'#d6a7c0' }};"></div>
+                        Secondary Color
+                    </label>
+                    {{ form.secondary_color }}
+                </div>
+            </div>
+        </div>
+        
+        <!-- Business Hours -->
+        <div class="settings-section">
+            <h6 class="mb-3">Business Hours</h6>
+            <div class="mb-3">
+                {{ form.working_hours }}
+                <small class="text-muted">Enter each day on a new line. Example: Monday-Friday: 9am-7pm</small>
+                {% if form.working_hours.errors %}
+                <div class="text-danger small">{{ form.working_hours.errors.0 }}</div>
+                {% endif %}
+            </div>
+        </div>
+        
+        <!-- Booking Policy -->
+        <div class="settings-section">
+            <h6 class="mb-3">Booking Policy</h6>
+            <div class="mb-3">
+                {{ form.booking_policy }}
+                <small class="text-muted">This policy will be shown to customers during booking</small>
+                {% if form.booking_policy.errors %}
+                <div class="text-danger small">{{ form.booking_policy.errors.0 }}</div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    
+    <!-- System Settings -->
+    <div class="settings-card">
+        <h5 class="mb-4">System Settings</h5>
+        
+        <div class="row">
+            <div class="col-md-6 mb-4">
+                <h6 class="mb-3">Notifications</h6>
+                
+                <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" id="emailNotifications" checked>
+                    <label class="form-check-label" for="emailNotifications">
+                        Email notifications for new bookings
+                    </label>
+                </div>
+                
+                <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" id="smsNotifications">
+                    <label class="form-check-label" for="smsNotifications">
+                        SMS notifications for urgent bookings
+                    </label>
+                </div>
+                
+                <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" id="lowStockAlerts" checked>
+                    <label class="form-check-label" for="lowStockAlerts">
+                        Low stock alerts
+                    </label>
+                </div>
+            </div>
+            
+            <div class="col-md-6 mb-4">
+                <h6 class="mb-3">Booking Settings</h6>
+                
+                <div class="mb-3">
+                    <label class="form-label">Default Booking Slot Duration (minutes)</label>
+                    <select class="form-select" id="slotDuration">
+                        <option value="30">30 minutes</option>
+                        <option value="60" selected>60 minutes</option>
+                        <option value="90">90 minutes</option>
+                        <option value="120">120 minutes</option>
+                    </select>
+                </div>
+                
+                <div class="mb-3">
+                    <label class="form-label">Cancellation Policy (hours)</label>
+                    <select class="form-select" id="cancellationPolicy">
+                        <option value="12">12 hours</option>
+                        <option value="24" selected>24 hours</option>
+                        <option value="48">48 hours</option>
+                        <option value="72">72 hours</option>
+                    </select>
+                </div>
+                
+                <div class="form-check form-switch mb-3">
+                    <input class="form-check-input" type="checkbox" id="autoConfirmBookings">
+                    <label class="form-check-label" for="autoConfirmBookings">
+                        Auto-confirm bookings
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Backup & Maintenance -->
+    <div class="settings-card">
+        <h5 class="mb-4">Backup & Maintenance</h5>
+        
+        <div class="row">
+            <div class="col-md-6 mb-4">
+                <h6 class="mb-3">Data Backup</h6>
+                
+                <div class="mb-3">
+                    <label class="form-label">Backup Frequency</label>
+                    <select class="form-select" id="backupFrequency">
+                        <option value="daily">Daily</option>
+                        <option value="weekly" selected>Weekly</option>
+                        <option value="monthly">Monthly</option>
+                    </select>
+                </div>
+                
+                <button type="button" class="btn btn-outline-primary" onclick="createBackup()">
+                    <i class="fas fa-database me-2"></i> Create Manual Backup
+                </button>
+                
+                <div class="mt-3">
+                    <small class="text-muted">Last backup: December 10, 2024</small>
+                </div>
+            </div>
+            
+            <div class="col-md-6 mb-4">
+                <h6 class="mb-3">System Maintenance</h6>
+                
+                <div class="mb-3">
+                    <label class="form-label">Auto-delete old data after</label>
+                    <select class="form-select" id="dataRetention">
+                        <option value="30">30 days</option>
+                        <option value="90" selected>90 days</option>
+                        <option value="180">6 months</option>
+                        <option value="365">1 year</option>
+                    </select>
+                </div>
+                
+                <button type="button" class="btn btn-outline-warning" onclick="clearOldData()">
+                    <i class="fas fa-broom me-2"></i> Clear Old Data Now
+                </button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Danger Zone -->
+    <div class="settings-card danger-zone">
+        <h5 class="mb-4 text-danger">Danger Zone</h5>
+        
+        <div class="alert alert-danger">
+            <h6><i class="fas fa-exclamation-triangle me-2"></i> Warning</h6>
+            <p class="mb-0">These actions are irreversible. Please proceed with caution.</p>
+        </div>
+        
+        <div class="row">
+            <div class="col-md-4 mb-3">
+                <button type="button" class="btn btn-outline-danger w-100" onclick="resetAllSettings()">
+                    <i class="fas fa-redo me-2"></i> Reset All Settings
+                </button>
+            </div>
+            <div class="col-md-4 mb-3">
+                <button type="button" class="btn btn-outline-danger w-100" onclick="clearAllData()">
+                    <i class="fas fa-trash-alt me-2"></i> Clear All Data
+                </button>
+            </div>
+            <div class="col-md-4 mb-3">
+                <button type="button" class="btn btn-outline-danger w-100" onclick="exportAllData()">
+                    <i class="fas fa-file-export me-2"></i> Export All Data
+                </button>
+            </div>
+        </div>
+    </div>
+</form>
+
+<!-- Confirmation Modals -->
+<div class="modal fade" id="confirmationModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="confirmationModalTitle">Confirm Action</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="confirmationModalBody">
+                Are you sure you want to proceed?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmActionBtn">Confirm</button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Color picker preview update
+    document.getElementById('id_primary_color').addEventListener('input', function() {
+        document.querySelectorAll('.color-preview')[0].style.backgroundColor = this.value;
+    });
+    
+    document.getElementById('id_secondary_color').addEventListener('input', function() {
+        document.querySelectorAll('.color-preview')[1].style.backgroundColor = this.value;
+    });
+    
+    // Logo preview
+    document.querySelector('input[name="site_logo"]').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const logoPreview = document.querySelector('.logo-preview');
+                logoPreview.innerHTML = `<img src="${e.target.result}" alt="Logo Preview">`;
+            };
+            reader.readAsDataURL(file);
+        }
+    });
+    
+    // Backup functions
+    function createBackup() {
+        showConfirmationModal(
+            'Create Backup',
+            'This will create a manual backup of all system data. Continue?',
+            function() {
+                console.log('Creating backup...');
+                // AJAX call to create backup
+                setTimeout(() => {
+                    alert('Backup created successfully!');
+                }, 1000);
+            }
+        );
+    }
+    
+    function clearOldData() {
+        showConfirmationModal(
+            'Clear Old Data',
+            'This will permanently delete all data older than 90 days. This action cannot be undone. Continue?',
+            function() {
+                console.log('Clearing old data...');
+                // AJAX call to clear old data
+                setTimeout(() => {
+                    alert('Old data cleared successfully!');
+                }, 1000);
+            }
+        );
+    }
+    
+    // Danger zone functions
+    function resetAllSettings() {
+        showConfirmationModal(
+            'Reset All Settings',
+            'This will reset all settings to their default values. This action cannot be undone. Continue?',
+            function() {
+                console.log('Resetting all settings...');
+                // AJAX call to reset settings
+                setTimeout(() => {
+                    alert('Settings reset successfully!');
+                    location.reload();
+                }, 1000);
+            }
+        );
+    }
+    
+    function clearAllData() {
+        showConfirmationModal(
+            'Clear All Data',
+            '⚠️ WARNING: This will permanently delete ALL data including bookings, customers, and products. This action cannot be undone. Type "DELETE" to confirm.',
+            function() {
+                const confirmation = prompt('Please type "DELETE" to confirm:');
+                if (confirmation === 'DELETE') {
+                    console.log('Clearing all data...');
+                    // AJAX call to clear all data
+                    setTimeout(() => {
+                        alert('All data cleared successfully!');
+                        location.reload();
+                    }, 1000);
+                }
+            }
+        );
+    }
+    
+    function exportAllData() {
+        showConfirmationModal(
+            'Export All Data',
+            'This will export all system data as CSV files. Continue?',
+            function() {
+                console.log('Exporting all data...');
+                // AJAX call to export data
+                setTimeout(() => {
+                    alert('Data exported successfully! Download will start automatically.');
+                    // In real app, trigger download
+                }, 1000);
+            }
+        );
+    }
+    
+    // Generic confirmation modal
+    function showConfirmationModal(title, message, confirmCallback) {
+        document.getElementById('confirmationModalTitle').textContent = title;
+        document.getElementById('confirmationModalBody').textContent = message;
+        
+        const confirmBtn = document.getElementById('confirmActionBtn');
+        confirmBtn.onclick = function() {
+            confirmCallback();
+            bootstrap.Modal.getInstance(document.getElementById('confirmationModal')).hide();
+        };
+        
+        const modal = new bootstrap.Modal(document.getElementById('confirmationModal'));
+        modal.show();
+    }
+    
+    // Form submission
+    document.getElementById('settingsForm').addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        // Collect form data
+        const formData = new FormData(this);
+        
+        // Add toggle switch values
+        formData.append('email_notifications', document.getElementById('emailNotifications').checked);
+        formData.append('sms_notifications', document.getElementById('smsNotifications').checked);
+        formData.append('low_stock_alerts', document.getElementById('lowStockAlerts').checked);
+        formData.append('auto_confirm_bookings', document.getElementById('autoConfirmBookings').checked);
+        formData.append('slot_duration', document.getElementById('slotDuration').value);
+        formData.append('cancellation_policy', document.getElementById('cancellationPolicy').value);
+        
+        console.log('Submitting settings...', Object.fromEntries(formData));
+        
+        // In a real app, you would send this via AJAX
+        // For now, we'll simulate success
+        setTimeout(() => {
+            alert('Settings saved successfully!');
+        }, 1000);
+    });
+</script>
+{% endblock %}

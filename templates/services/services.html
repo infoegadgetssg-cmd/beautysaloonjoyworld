@@ -1,0 +1,275 @@
+<!-- templates/services/services.html -->
+{% extends 'services/base_services.html' %}
+{% load static %}
+
+{% block title %}Our Services | Joy World Home of Beauty{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<section class="services-hero">
+    <div class="container">
+        <h1 data-aos="fade-down">Our Services</h1>
+        <p data-aos="fade-up" data-aos-delay="200">
+            Indulge in our premium treatments designed to enhance your natural beauty
+        </p>
+        <div data-aos="fade-up" data-aos-delay="400">
+            <a href="#services" class="btn btn-light btn-lg">View Services</a>
+        </div>
+    </div>
+</section>
+
+<!-- Category Navigation -->
+<nav class="category-nav" id="categoryNav">
+    <div class="container">
+        <ul class="nav">
+            <li class="nav-item">
+                <a class="nav-link {% if current_category == 'all' %}active{% endif %}" 
+                   href="{% url 'services:services_list' %}">
+                    All Services
+                </a>
+            </li>
+            {% for category in categories %}
+            <li class="nav-item">
+                <a class="nav-link {% if current_category == category.slug %}active{% endif %}" 
+                   href="{% url 'services:services_by_category' category.slug %}">
+                    {{ category.name }}
+                </a>
+            </li>
+            {% endfor %}
+        </ul>
+    </div>
+</nav>
+
+<!-- Services Section -->
+<section class="section-padding" id="services">
+    <div class="container">
+        <div class="section-title">
+            <h2>Beauty & Wellness Services</h2>
+            <p class="text-muted">Discover our range of premium beauty treatments</p>
+        </div>
+
+        <!-- Search and Filter -->
+        <div class="row mb-4">
+            <div class="col-md-8">
+                <form method="get" class="row g-2">
+                    <div class="col-md-4">
+                        <input type="text" name="search" class="form-control" 
+                               placeholder="Search services..." value="{{ request.GET.search }}">
+                    </div>
+                    <div class="col-md-3">
+                        <input type="number" name="price_min" class="form-control" 
+                               placeholder="Min price" value="{{ request.GET.price_min }}">
+                    </div>
+                    <div class="col-md-3">
+                        <input type="number" name="price_max" class="form-control" 
+                               placeholder="Max price" value="{{ request.GET.price_max }}">
+                    </div>
+                    <div class="col-md-2">
+                        <button type="submit" class="btn btn-primary w-100">Filter</button>
+                    </div>
+                </form>
+            </div>
+            <div class="col-md-4 text-md-end">
+                <p class="mb-0 mt-2">{{ total_services }} services found</p>
+            </div>
+        </div>
+
+        <!-- Services Grid -->
+        {% if services %}
+        <div class="row">
+            {% for service in services %}
+            <div class="col-lg-4 col-md-6 mb-4" data-aos="fade-up" data-aos-delay="{{ forloop.counter0|add:'100' }}">
+                <div class="service-card">
+                    {% if service.is_on_special %}
+                    <span class="service-badge">Special Offer</span>
+                    {% endif %}
+                    
+                    <div class="position-relative overflow-hidden">
+                        {% if service.image %}
+                        <img src="{{ service.image.url }}" alt="{{ service.name }}" class="service-card-img">
+                        {% elif service.image_url %}
+                        <img src="{{ service.image_url }}" alt="{{ service.name }}" class="service-card-img">
+                        {% else %}
+                        <img src="https://res.cloudinary.com/demo/image/upload/v1681234567/service-placeholder.jpg" 
+                             alt="{{ service.name }}" class="service-card-img">
+                        {% endif %}
+                    </div>
+                    
+                    <div class="service-card-body">
+                        <div class="d-flex justify-content-between align-items-start mb-2">
+                            <span class="badge bg-primary">{{ service.category.name }}</span>
+                            <span class="text-muted">{{ service.formatted_duration }}</span>
+                        </div>
+                        
+                        <h4 class="mb-2">{{ service.name }}</h4>
+                        <p class="text-muted mb-3">{{ service.short_description|truncatechars:100 }}</p>
+                        
+                        <div class="service-price mb-3">
+                            {% if service.is_on_special and service.special_price %}
+                            <span class="special-price">£{{ service.price }}</span>
+                            <span>£{{ service.special_price }}</span>
+                            {% else %}
+                            <span>£{{ service.price }}</span>
+                            {% endif %}
+                        </div>
+                        
+                        {% if service.features %}
+                        <ul class="service-features mb-4">
+                            {% for feature in service.features|slice:":3" %}
+                            <li>{{ feature }}</li>
+                            {% endfor %}
+                        </ul>
+                        {% endif %}
+                        
+                        <div class="d-flex justify-content-between align-items-center">
+                            <a href="{% url 'services:service_detail' service.slug %}" 
+                               class="btn btn-outline-primary btn-sm">
+                                View Details
+                            </a>
+                            <a href="{% url 'booking:booking' %}?service={{ service.id }}" 
+                               class="btn btn-primary btn-sm">
+                                Book Now
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if services.has_other_pages %}
+        <nav aria-label="Services navigation">
+            <ul class="pagination justify-content-center">
+                {% if services.has_previous %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ services.previous_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.price_min %}&price_min={{ request.GET.price_min }}{% endif %}{% if request.GET.price_max %}&price_max={{ request.GET.price_max }}{% endif %}">
+                        Previous
+                    </a>
+                </li>
+                {% endif %}
+                
+                {% for num in services.paginator.page_range %}
+                    {% if services.number == num %}
+                    <li class="page-item active">
+                        <span class="page-link">{{ num }}</span>
+                    </li>
+                    {% elif num > services.number|add:'-3' and num < services.number|add:'3' %}
+                    <li class="page-item">
+                        <a class="page-link" href="?page={{ num }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.price_min %}&price_min={{ request.GET.price_min }}{% endif %}{% if request.GET.price_max %}&price_max={{ request.GET.price_max }}{% endif %}">
+                            {{ num }}
+                        </a>
+                    </li>
+                    {% endif %}
+                {% endfor %}
+                
+                {% if services.has_next %}
+                <li class="page-item">
+                    <a class="page-link" href="?page={{ services.next_page_number }}{% if request.GET.search %}&search={{ request.GET.search }}{% endif %}{% if request.GET.price_min %}&price_min={{ request.GET.price_min }}{% endif %}{% if request.GET.price_max %}&price_max={{ request.GET.price_max }}{% endif %}">
+                        Next
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+        </nav>
+        {% endif %}
+        
+        {% else %}
+        <div class="text-center py-5" data-aos="fade-up">
+            <i class="fas fa-spa fa-4x text-muted mb-3"></i>
+            <h4 class="text-muted">No services found</h4>
+            <p class="text-muted">Try adjusting your filters or search terms</p>
+        </div>
+        {% endif %}
+    </div>
+</section>
+
+<!-- FAQ Section -->
+<section class="section-padding bg-light">
+    <div class="container">
+        <div class="section-title">
+            <h2>Frequently Asked Questions</h2>
+            <p class="text-muted">Find answers to common questions about our services</p>
+        </div>
+
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="faq-accordion" id="faqAccordion">
+                    {% for faq in faqs %}
+                    <div class="accordion-item" data-aos="fade-up" data-aos-delay="{{ forloop.counter0|add:'100' }}">
+                        <h2 class="accordion-header">
+                            <button class="accordion-button {% if not forloop.first %}collapsed{% endif %}" 
+                                    type="button" data-bs-toggle="collapse" 
+                                    data-bs-target="#faq{{ forloop.counter }}">
+                                {{ faq.question }}
+                            </button>
+                        </h2>
+                        <div id="faq{{ forloop.counter }}" 
+                             class="accordion-collapse collapse {% if forloop.first %}show{% endif %}" 
+                             data-bs-parent="#faqAccordion">
+                            <div class="accordion-body">
+                                {{ faq.answer|linebreaks }}
+                            </div>
+                        </div>
+                    </div>
+                    {% empty %}
+                    <div class="text-center py-5">
+                        <p class="text-muted">No FAQs available at the moment.</p>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA Section -->
+<section class="section-padding" style="background: linear-gradient(rgba(168, 107, 163, 0.9), rgba(168, 107, 163, 0.9)), url('https://res.cloudinary.com/demo/image/upload/v1681234567/cta-bg.jpg') center/cover no-repeat; color: white;">
+    <div class="container text-center">
+        <h2 class="mb-4" data-aos="fade-up">Ready to Experience Luxury Beauty?</h2>
+        <p class="mb-4" data-aos="fade-up" data-aos-delay="100">
+            Book your appointment today and let our experts enhance your natural beauty with our premium services.
+        </p>
+        <a href="{% url 'booking:booking' %}" class="btn btn-light btn-lg" data-aos="fade-up" data-aos-delay="200">
+            Book Now
+        </a>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Smooth scrolling for category navigation
+    document.addEventListener('DOMContentLoaded', function() {
+        // Category nav scroll effect
+        const categoryNav = document.getElementById('categoryNav');
+        window.addEventListener('scroll', function() {
+            if (window.scrollY > 100) {
+                categoryNav.classList.add('shadow-sm');
+            } else {
+                categoryNav.classList.remove('shadow-sm');
+            }
+        });
+
+        // Filter form submission with loading
+        const filterForm = document.querySelector('form[method="get"]');
+        if (filterForm) {
+            filterForm.addEventListener('submit', function() {
+                const submitBtn = this.querySelector('button[type="submit"]');
+                if (submitBtn) {
+                    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Filtering...';
+                    submitBtn.disabled = true;
+                }
+            });
+        }
+
+        // Initialize AOS animations
+        AOS.init({
+            duration: 800,
+            easing: 'ease-in-out',
+            once: true,
+            offset: 100
+        });
+    });
+</script>
+{% endblock %}

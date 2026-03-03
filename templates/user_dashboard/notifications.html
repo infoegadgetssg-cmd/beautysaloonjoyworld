@@ -1,0 +1,87 @@
+<!-- templates/user_dashboard/notifications.html -->
+{% extends 'user_dashboard/base_dashboard.html' %}
+
+{% block dashboard_content %}
+<h3 class="mb-4">Notifications</h3>
+
+{% if notifications %}
+    <div class="list-group">
+        {% for notification in notifications %}
+        <div class="list-group-item list-group-item-action border-0 {% if not notification.is_read %}bg-primary-light{% endif %}">
+            <div class="d-flex w-100 justify-content-between align-items-start">
+                <div class="flex-grow-1 me-3">
+                    <div class="d-flex align-items-start">
+                        <div class="me-3">
+                            {% if notification.notification_type == 'booking_confirmation' %}
+                            <i class="fas fa-calendar-check text-primary fa-lg"></i>
+                            {% elif notification.notification_type == 'booking_reminder' %}
+                            <i class="fas fa-bell text-warning fa-lg"></i>
+                            {% elif notification.notification_type == 'promotion' %}
+                            <i class="fas fa-gift text-success fa-lg"></i>
+                            {% else %}
+                            <i class="fas fa-info-circle text-info fa-lg"></i>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <h6 class="mb-1">{{ notification.title }}</h6>
+                            <p class="mb-1">{{ notification.message }}</p>
+                            <small class="text-muted">{{ notification.created_at|timesince }} ago</small>
+                        </div>
+                    </div>
+                </div>
+                <div>
+                    <a href="{% url 'user_dashboard:delete_notification' notification.id %}" 
+                       class="btn btn-sm btn-outline-danger"
+                       onclick="return confirm('Delete this notification?')">
+                        <i class="fas fa-trash"></i>
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+    </div>
+    
+    <!-- Mark All as Read -->
+    <div class="mt-4">
+        <form method="post" action="{% url 'mark_all_read' %}">
+            {% csrf_token %}
+            <button type="submit" class="btn btn-outline-primary">
+                <i class="fas fa-check-double me-2"></i>Mark All as Read
+            </button>
+        </form>
+    </div>
+    
+    <!-- Pagination -->
+    {% if notifications.has_other_pages %}
+    <nav aria-label="Notifications navigation" class="mt-4">
+        <ul class="pagination justify-content-center">
+            {% if notifications.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ notifications.previous_page_number }}">Previous</a>
+            </li>
+            {% endif %}
+            
+            {% for num in notifications.paginator.page_range %}
+            <li class="page-item {% if notifications.number == num %}active{% endif %}">
+                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+            </li>
+            {% endfor %}
+            
+            {% if notifications.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ notifications.next_page_number }}">Next</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+{% else %}
+    <div class="text-center py-5">
+        <div class="mb-4">
+            <i class="fas fa-bell-slash text-muted fa-4x"></i>
+        </div>
+        <h4 class="mb-3">No Notifications</h4>
+        <p class="text-muted">You're all caught up! No new notifications at the moment.</p>
+    </div>
+{% endif %}
+{% endblock %}

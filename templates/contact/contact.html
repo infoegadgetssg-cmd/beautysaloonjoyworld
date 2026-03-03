@@ -1,0 +1,632 @@
+<!-- templates/contact/contact.html -->
+{% extends 'base.html' %}
+{% load static %}
+{% load contact_filters %}
+
+{% block title %}{{ page_title|default:"Contact Us | Joy World Home of Beauty" }}{% endblock %}
+
+{% block extra_css %}
+<style>
+    /* All your original CSS from contact.html goes here */
+    :root {
+        --primary-light: #f6e9f0;
+        --white: #ffffff;
+        --primary-medium: #d6a7c0;
+        --primary-dark: #a86ba3;
+        --dark: #333333;
+        --transition: all 0.3s ease;
+    }
+
+    /* Page Header */
+    .page-header {
+        background: linear-gradient(rgba(168, 107, 163, 0.8), rgba(168, 107, 163, 0.8)), 
+                    url('{% static "images/contact-header.jpg" %}') center/cover no-repeat;
+        padding: 150px 0 80px;
+        color: var(--white);
+        text-align: center;
+        margin-top: 80px;
+    }
+
+    .page-header h1 {
+        font-size: 3rem;
+        margin-bottom: 15px;
+        animation: fadeInDown 1s ease;
+    }
+
+    @keyframes fadeInDown {
+        from { opacity: 0; transform: translateY(-30px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
+    /* Contact Section */
+    .contact-section { padding: 80px 0; }
+
+    .contact-container {
+        background-color: var(--white);
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+    }
+
+    .contact-info {
+        background: linear-gradient(135deg, var(--primary-dark), var(--primary-medium));
+        color: var(--white);
+        padding: 50px 40px;
+        height: 100%;
+    }
+
+    .contact-info h3 {
+        margin-bottom: 30px;
+        position: relative;
+        padding-bottom: 15px;
+    }
+
+    .contact-info h3:after {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        width: 50px;
+        height: 2px;
+        background-color: var(--white);
+    }
+
+    .contact-details { margin-bottom: 40px; }
+
+    .contact-item {
+        display: flex;
+        align-items: flex-start;
+        margin-bottom: 25px;
+    }
+
+    .contact-icon {
+        width: 50px;
+        height: 50px;
+        background-color: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 15px;
+        flex-shrink: 0;
+    }
+
+    .contact-text h5 { margin-bottom: 5px; }
+    .contact-text p { margin-bottom: 0; opacity: 0.9; }
+
+    .social-contact { margin-top: 30px; }
+    .social-contact h5 { margin-bottom: 15px; }
+    .social-icons { display: flex; gap: 10px; }
+
+    .social-icon {
+        width: 45px;
+        height: 45px;
+        background-color: rgba(255, 255, 255, 0.2);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: var(--white);
+        text-decoration: none;
+        transition: var(--transition);
+    }
+
+    .social-icon:hover {
+        background-color: var(--white);
+        color: var(--primary-dark);
+        transform: translateY(-3px);
+    }
+
+    /* Contact Form */
+    .contact-form { padding: 50px 40px; }
+    .form-section-title {
+        font-size: 1.5rem;
+        color: var(--primary-dark);
+        margin-bottom: 30px;
+        padding-bottom: 15px;
+        border-bottom: 1px solid #eee;
+    }
+
+    .form-group { margin-bottom: 25px; }
+    .form-label {
+        font-weight: 500;
+        margin-bottom: 8px;
+        color: var(--dark);
+    }
+
+    .form-control, .form-select, .form-textarea {
+        padding: 12px 15px;
+        border-radius: 10px;
+        border: 1px solid #e0e0e0;
+        transition: var(--transition);
+        width: 100%;
+    }
+
+    .form-textarea { min-height: 120px; resize: vertical; }
+
+    .form-control:focus, .form-select:focus, .form-textarea:focus {
+        border-color: var(--primary-medium);
+        box-shadow: 0 0 0 0.2rem rgba(214, 167, 192, 0.25);
+    }
+
+    /* Quick Contact Options */
+    .quick-contact {
+        display: flex;
+        gap: 15px;
+        margin-top: 20px;
+    }
+
+    .quick-contact-btn {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 20px 15px;
+        background-color: var(--primary-light);
+        border-radius: 10px;
+        text-decoration: none;
+        color: var(--dark);
+        transition: var(--transition);
+        text-align: center;
+    }
+
+    .quick-contact-btn:hover {
+        background-color: var(--primary-medium);
+        color: var(--white);
+        transform: translateY(-5px);
+    }
+
+    .quick-contact-icon {
+        font-size: 1.8rem;
+        margin-bottom: 10px;
+    }
+
+    /* Map Section */
+    .map-section { padding: 0 0 80px; }
+    .map-container {
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        height: 450px;
+    }
+
+    #map {
+        width: 100%;
+        height: 100%;
+        border: none;
+    }
+
+    /* FAQ Section */
+    .faq-section {
+        background-color: var(--primary-light);
+        padding: 80px 0;
+    }
+
+    .faq-item {
+        margin-bottom: 20px;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.05);
+    }
+
+    .faq-question {
+        background-color: var(--white);
+        padding: 20px;
+        font-weight: 600;
+        cursor: pointer;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        transition: var(--transition);
+    }
+
+    .faq-question:hover { background-color: rgba(255, 255, 255, 0.9); }
+
+    .faq-answer {
+        padding: 0 20px;
+        max-height: 0;
+        overflow: hidden;
+        transition: var(--transition);
+        background-color: var(--white);
+    }
+
+    .faq-item.active .faq-answer {
+        padding: 20px;
+        max-height: 500px;
+    }
+
+    .faq-item.active .faq-toggle i { transform: rotate(180deg); }
+    .faq-toggle { transition: var(--transition); }
+
+    /* Business Hours */
+    .hours-section { padding: 80px 0; }
+    .hours-card {
+        background-color: var(--white);
+        border-radius: 15px;
+        padding: 40px;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
+        text-align: center;
+    }
+
+    .hours-list {
+        list-style: none;
+        padding: 0;
+        margin: 30px 0;
+    }
+
+    .hours-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 12px 0;
+        border-bottom: 1px solid #f0f0f0;
+    }
+
+    .hours-item:last-child { border-bottom: none; }
+    .hours-day { font-weight: 500; }
+    .hours-time { color: var(--primary-dark); font-weight: 500; }
+
+    /* Responsive */
+    @media (max-width: 768px) {
+        .page-header h1 { font-size: 2.5rem; }
+        .page-header { padding: 130px 0 60px; margin-top: 70px; }
+        .contact-info, .contact-form { padding: 30px 20px; }
+        .quick-contact { flex-direction: column; }
+        .map-container { height: 350px; }
+        .hours-card { padding: 30px 20px; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Page Header -->
+<section class="page-header" data-aos="fade-up" data-aos-duration="800">
+    <div class="container">
+        <h1 data-aos="fade-down" data-aos-delay="200" data-aos-duration="1000">Get In Touch</h1>
+        <nav aria-label="breadcrumb" data-aos="fade-up" data-aos-delay="200">
+            <ol class="breadcrumb">
+                <li class="breadcrumb-item"><a href="{% url 'index' %}">Home</a></li>
+                {% block breadcrumb %}<li class="breadcrumb-item active">Contact</li>{% endblock %}
+            </ol>
+        </nav>
+    </div>
+</section>
+
+<!-- Contact Section -->
+<section class="contact-section">
+    <div class="container">
+        <div class="contact-container" data-aos="fade-up" data-aos-delay="200" data-aos-duration="1000">
+            <div class="row g-0">
+                <!-- Contact Information -->
+                <div class="col-lg-5">
+                    <div class="contact-info">
+                        <h3 data-aos="fade-right" data-aos-delay="300" data-aos-duration="800">Contact Information</h3>
+
+                        <div class="contact-details">
+                            {% if salon %}
+                            <div class="contact-item" data-aos="fade-right" data-aos-delay="400">
+                                <div class="contact-icon"><i class="fas fa-map-marker-alt"></i></div>
+                                <div class="contact-text">
+                                    <h5>Our Location</h5>
+                                    <p>{{ salon.address|linebreaksbr }}</p>
+                                </div>
+                            </div>
+
+                            <div class="contact-item" data-aos="fade-right" data-aos-delay="500">
+                                <div class="contact-icon"><i class="fas fa-phone"></i></div>
+                                <div class="contact-text">
+                                    <h5>Phone Number</h5>
+                                    <p>{{ salon.phone }}</p>
+                                </div>
+                            </div>
+
+                            <div class="contact-item" data-aos="fade-right" data-aos-delay="600">
+                                <div class="contact-icon"><i class="fas fa-envelope"></i></div>
+                                <div class="contact-text">
+                                    <h5>Email Address</h5>
+                                    <p>{{ salon.email }}</p>
+                                </div>
+                            </div>
+                            {% endif %}
+
+                            <div class="contact-item" data-aos="fade-right" data-aos-delay="700">
+                                <div class="contact-icon"><i class="fas fa-clock"></i></div>
+                                <div class="contact-text">
+                                    <h5>Working Hours</h5>
+                                    <p>
+                                        Monday - Saturday: 9:00 AM - 7:00 PM<br>
+                                        Sunday: 10:00 AM - 5:00 PM
+                                    </p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="social-contact" data-aos="fade-right" data-aos-delay="800">
+                            <h5>Follow Us</h5>
+                            <div class="social-icons">
+                                {% if salon and salon.facebook_url %}
+                                <a href="{{ salon.facebook_url }}" class="social-icon" data-aos="zoom-in" data-aos-delay="900">
+                                    <i class="fab fa-facebook-f"></i>
+                                </a>
+                                {% endif %}
+                                
+                                {% if salon and salon.instagram_url %}
+                                <a href="{{ salon.instagram_url }}" class="social-icon" data-aos="zoom-in" data-aos-delay="1000">
+                                    <i class="fab fa-instagram"></i>
+                                </a>
+                                {% endif %}
+                                
+                                {% if salon and salon.twitter_url %}
+                                <a href="{{ salon.twitter_url }}" class="social-icon" data-aos="zoom-in" data-aos-delay="1100">
+                                    <i class="fab fa-twitter"></i>
+                                </a>
+                                {% endif %}
+                                
+                                {% if salon and salon.pinterest_url %}
+                                <a href="{{ salon.pinterest_url }}" class="social-icon" data-aos="zoom-in" data-aos-delay="1200">
+                                    <i class="fab fa-pinterest"></i>
+                                </a>
+                                {% endif %}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Contact Form -->
+                <div class="col-lg-7">
+                    <div class="contact-form">
+                        <h3 class="form-section-title" data-aos="fade-left" data-aos-delay="300">Send Us a Message</h3>
+
+                        <!-- Django Messages -->
+                        {% if messages %}
+                        <div class="alert alert-info alert-dismissible fade show mb-4" role="alert">
+                            {% for message in messages %}
+                            {{ message }}
+                            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
+                        <form method="post" id="contactForm">
+                            {% csrf_token %}
+                            <input type="hidden" name="contact_submit" value="1">
+                            
+                            <div class="row">
+                                <div class="col-md-6" data-aos="fade-left" data-aos-delay="400">
+                                    <div class="form-group">
+                                        <label for="id_name" class="form-label">Full Name *</label>
+                                        {{ contact_form.name }}
+                                        {% if contact_form.name.errors %}
+                                        <div class="text-danger small">{{ contact_form.name.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-6" data-aos="fade-left" data-aos-delay="500">
+                                    <div class="form-group">
+                                        <label for="id_email" class="form-label">Email Address *</label>
+                                        {{ contact_form.email }}
+                                        {% if contact_form.email.errors %}
+                                        <div class="text-danger small">{{ contact_form.email.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6" data-aos="fade-left" data-aos-delay="600">
+                                    <div class="form-group">
+                                        <label for="id_phone" class="form-label">Phone Number</label>
+                                        {{ contact_form.phone }}
+                                        {% if contact_form.phone.errors %}
+                                        <div class="text-danger small">{{ contact_form.phone.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                                <div class="col-md-6" data-aos="fade-left" data-aos-delay="700">
+                                    <div class="form-group">
+                                        <label for="id_topic" class="form-label">Subject *</label>
+                                        {{ contact_form.topic }}
+                                        {% if contact_form.topic.errors %}
+                                        <div class="text-danger small">{{ contact_form.topic.errors }}</div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div class="form-group" data-aos="fade-left" data-aos-delay="800">
+                                <label for="id_message" class="form-label">Message *</label>
+                                {{ contact_form.message }}
+                                {% if contact_form.message.errors %}
+                                <div class="text-danger small">{{ contact_form.message.errors }}</div>
+                                {% endif %}
+                            </div>
+
+                            <div class="form-group form-check" data-aos="fade-left" data-aos-delay="900">
+                                {{ contact_form.subscribe_newsletter }}
+                                <label class="form-check-label" for="id_subscribe_newsletter">
+                                    Subscribe to our newsletter for beauty tips and special offers
+                                </label>
+                            </div>
+
+                            <div data-aos="fade-left" data-aos-delay="1000">
+                                <button type="submit" class="btn btn-primary btn-lg w-100" id="submitContact">
+                                    <span class="spinner-border spinner-border-sm d-none" role="status"></span>
+                                    Send Message
+                                </button>
+                            </div>
+                        </form>
+
+                        <!-- Quick Contact Options -->
+                        <div class="quick-contact mt-5">
+                            <a href="tel:+441611234567" class="quick-contact-btn" data-aos="zoom-in" data-aos-delay="1100">
+                                <div class="quick-contact-icon"><i class="fas fa-phone"></i></div>
+                                <span>Call Us</span>
+                            </a>
+
+                            <a href="https://wa.me/441611234567" class="quick-contact-btn" target="_blank" data-aos="zoom-in" data-aos-delay="1200">
+                                <div class="quick-contact-icon"><i class="fab fa-whatsapp"></i></div>
+                                <span>WhatsApp</span>
+                            </a>
+
+                            <a href="https://www.google.com/maps/dir//123+Beauty+Street+Manchester+M1+1AB" class="quick-contact-btn" target="_blank" data-aos="zoom-in" data-aos-delay="1300">
+                                <div class="quick-contact-icon"><i class="fas fa-directions"></i></div>
+                                <span>Get Directions</span>
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Map Section -->
+<section class="map-section" data-aos="fade-up" data-aos-delay="200" data-aos-duration="800">
+    <div class="container">
+        <div class="map-container">
+            {% if salon %}
+            <iframe id="map" src="{{ salon.google_maps_embed_url }}" allowfullscreen="" loading="lazy" referrerpolicy="no-referrer-when-downgrade"></iframe>
+            {% else %}
+            <div class="d-flex align-items-center justify-content-center h-100 bg-light">
+                <p class="text-muted">Map not available</p>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+</section>
+
+<!-- Business Hours Section -->
+<section class="hours-section">
+    <div class="container">
+        <div class="row justify-content-center" data-aos="fade-up" data-aos-delay="200">
+            <div class="col-lg-6">
+                <div class="hours-card" data-aos="flip-up" data-aos-delay="400" data-aos-duration="1000">
+                    <h3>Salon Hours</h3>
+                    <p class="text-muted">Visit us during our opening hours</p>
+
+                    <ul class="hours-list">
+                        {% for hour in business_hours %}
+                        <li class="hours-item" data-aos="fade-up" data-aos-delay="{{ forloop.counter|calculate_delay }}">
+                            <span class="hours-day">{{ hour.get_day_display }}</span>
+                            <span class="hours-time">
+                                {% if hour.is_closed %}
+                                Closed
+                                {% else %}
+                                {{ hour.opening_time|time:"g:i A" }} - {{ hour.closing_time|time:"g:i A" }}
+                                {% endif %}
+                            </span>
+                        </li>
+                        {% endfor %}
+                    </ul>
+
+                    <p class="text-muted mb-4" data-aos="fade-up" data-aos-delay="850">
+                        We recommend booking appointments in advance to secure your preferred time slot.
+                    </p>
+                    <a href="{% url 'booking:booking' %}" class="btn btn-primary" data-aos="zoom-in" data-aos-delay="900">
+                        Book an Appointment
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+<!-- FAQ Section -->
+<section class="faq-section">
+    <div class="container">
+        <div class="section-title text-center mb-5" data-aos="fade-up" data-aos-duration="800">
+            <h2 data-aos="fade-down" data-aos-delay="200">Frequently Asked Questions</h2>
+            <p data-aos="fade-up" data-aos-delay="400">Quick answers to common questions</p>
+        </div>
+
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                {% for faq in faqs %}
+                <div class="faq-item" 
+                     data-aos="{% cycle 'fade-right' 'fade-left' %}" 
+                     data-aos-delay="{{ forloop.counter|faq_delay }}" 
+                     data-aos-duration="800">
+                    <div class="faq-question">
+                        {{ faq.question }}
+                        <span class="faq-toggle"><i class="fas fa-chevron-down"></i></span>
+                    </div>
+                    <div class="faq-answer">
+                        {{ faq.answer|linebreaks }}
+                    </div>
+                </div>
+                {% empty %}
+                <div class="text-center py-4">
+                    <p class="text-muted">No FAQs available at the moment.</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- Success Modal -->
+<div class="modal fade" id="successModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header border-0">
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center py-4">
+                <div class="mb-4" data-aos="zoom-in" data-aos-duration="500">
+                    <i class="fas fa-check-circle fa-4x text-success"></i>
+                </div>
+                <h3 class="mb-3" data-aos="fade-up" data-aos-delay="200">Message Sent!</h3>
+                <p class="mb-4" data-aos="fade-up" data-aos-delay="400">
+                    Thank you for contacting Joy World. We'll get back to you within 24 hours.
+                </p>
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal" data-aos="zoom-in" data-aos-delay="600">
+                    Close
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Initialize AOS
+    document.addEventListener("DOMContentLoaded", function () {
+        AOS.init({
+            duration: 800,
+            easing: "ease-in-out",
+            once: false,
+            offset: 100,
+        });
+
+        // FAQ functionality
+        document.querySelectorAll(".faq-item").forEach((item) => {
+            const question = item.querySelector(".faq-question");
+            question.addEventListener("click", () => {
+                item.classList.toggle("active");
+            });
+        });
+
+        // Contact form submission with loading spinner
+        const contactForm = document.getElementById("contactForm");
+        if (contactForm) {
+            contactForm.addEventListener("submit", function() {
+                const submitBtn = document.getElementById("submitContact");
+                const spinner = submitBtn.querySelector(".spinner-border");
+                
+                if (submitBtn && spinner) {
+                    submitBtn.disabled = true;
+                    spinner.classList.remove("d-none");
+                }
+            });
+        }
+
+        // Auto-dismiss alerts after 5 seconds
+        setTimeout(() => {
+            document.querySelectorAll('.alert').forEach(alert => {
+                const bsAlert = new bootstrap.Alert(alert);
+                bsAlert.close();
+            });
+        }, 5000);
+    });
+</script>
+{% endblock %}

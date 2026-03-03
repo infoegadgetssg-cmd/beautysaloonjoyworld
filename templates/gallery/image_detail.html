@@ -1,0 +1,305 @@
+<!-- templates/gallery/image_detail.html -->
+{% extends 'gallery/base_gallery.html' %}
+{% load static %}
+
+{% block gallery_title %}{{ image.title }}{% endblock %}
+{% block gallery_heading %}{{ image.title }}{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'gallery:gallery' %}">Gallery</a></li>
+<li class="breadcrumb-item"><a href="{% url 'gallery:category' slug=image.category.slug %}">{{ image.category.name }}</a></li>
+<li class="breadcrumb-item active">{{ image.title }}</li>
+{% endblock %}
+
+{% block gallery_content %}
+<!-- Image Detail Section -->
+<section class="image-detail-section py-5">
+    <div class="container">
+        <div class="row">
+            <!-- Image Column -->
+            <div class="col-lg-8 mb-4">
+                <div class="image-container" data-aos="fade-up">
+                    <img src="{{ image.image.url }}" alt="{{ image.title }}" 
+                         class="img-fluid rounded-3 shadow-lg" id="detailImage">
+                    
+                    <!-- Image Actions -->
+                    <div class="image-actions mt-3 d-flex justify-content-between align-items-center">
+                        <div class="d-flex gap-3">
+                            <button class="btn btn-outline-primary" onclick="downloadImage('{{ image.image.url }}')">
+                                <i class="fas fa-download me-2"></i>Download
+                            </button>
+                            <button class="btn btn-outline-secondary" onclick="shareImage()">
+                                <i class="fas fa-share-alt me-2"></i>Share
+                            </button>
+                        </div>
+                        <div class="d-flex align-items-center gap-3">
+                            <button class="like-btn {% if user_liked %}liked{% endif %}" 
+                                    onclick="toggleLike({{ image.id }})" 
+                                    id="likeButton{{ image.id }}">
+                                <i class="fas fa-heart me-1"></i>
+                                <span id="likeCount{{ image.id }}">{{ image.likes }}</span>
+                            </button>
+                            <span class="text-muted">
+                                <i class="fas fa-eye me-1"></i>{{ image.views }}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Info Column -->
+            <div class="col-lg-4">
+                <div class="image-info-card" data-aos="fade-up" data-aos-delay="100">
+                    <h3>{{ image.title }}</h3>
+                    <p class="text-muted">{{ image.description }}</p>
+                    
+                    <div class="image-meta mb-4">
+                        <div class="meta-item mb-2">
+                            <strong><i class="fas fa-tag me-2"></i>Category:</strong>
+                            <span class="badge bg-primary ms-2">{{ image.category.name }}</span>
+                        </div>
+                        <div class="meta-item mb-2">
+                            <strong><i class="fas fa-calendar me-2"></i>Posted:</strong>
+                            <span>{{ image.created_at|date:"F d, Y" }}</span>
+                        </div>
+                        {% if image.created_by %}
+                        <div class="meta-item mb-4">
+                            <strong><i class="fas fa-user me-2"></i>By:</strong>
+                            <span>{{ image.created_by.get_full_name|default:image.created_by.username }}</span>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <!-- Navigation -->
+                    <div class="image-navigation d-flex justify-content-between">
+                        {% if prev_image %}
+                        <a href="{% url 'gallery:image_detail' slug=prev_image.slug %}" 
+                           class="btn btn-outline-primary">
+                            <i class="fas fa-arrow-left me-2"></i>Previous
+                        </a>
+                        {% endif %}
+                        
+                        {% if next_image %}
+                        <a href="{% url 'gallery:image_detail' slug=next_image.slug %}" 
+                           class="btn btn-primary ms-auto">
+                            Next<i class="fas fa-arrow-right ms-2"></i>
+                        </a>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Related Images -->
+        {% if related_images %}
+        <div class="row mt-5" data-aos="fade-up" data-aos-delay="200">
+            <div class="col-12">
+                <h4 class="mb-4">Related Images</h4>
+                <div class="row g-4">
+                    {% for related_image in related_images %}
+                    <div class="col-md-4 col-lg-3">
+                        <div class="related-image-card">
+                            <a href="{% url 'gallery:image_detail' slug=related_image.slug %}">
+                                <img src="{{ related_image.image.url }}" 
+                                     alt="{{ related_image.title }}"
+                                     class="img-fluid rounded">
+                                <div class="related-image-overlay">
+                                    <h6>{{ related_image.title }}</h6>
+                                </div>
+                            </a>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</section>
+{% endblock %}
+
+{% block gallery_css %}
+<style>
+    .image-container {
+        position: relative;
+        background: var(--white);
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
+    }
+    
+    .image-container img {
+        width: 100%;
+        height: auto;
+        display: block;
+        transition: var(--transition);
+    }
+    
+    .image-actions {
+        padding: 15px;
+        background: var(--white);
+        border-top: 1px solid #eee;
+    }
+    
+    .image-info-card {
+        background: var(--white);
+        padding: 30px;
+        border-radius: 15px;
+        box-shadow: 0 5px 20px rgba(0, 0, 0, 0.08);
+        height: 100%;
+    }
+    
+    .image-info-card h3 {
+        color: var(--primary-dark);
+        margin-bottom: 15px;
+    }
+    
+    .meta-item {
+        padding-bottom: 10px;
+        border-bottom: 1px dashed #eee;
+    }
+    
+    .meta-item:last-child {
+        border-bottom: none;
+    }
+    
+    .related-image-card {
+        position: relative;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.08);
+        transition: var(--transition);
+    }
+    
+    .related-image-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+    }
+    
+    .related-image-card img {
+        width: 100%;
+        height: 200px;
+        object-fit: cover;
+    }
+    
+    .related-image-overlay {
+        position: absolute;
+        bottom: 0;
+        left: 0;
+        right: 0;
+        background: linear-gradient(transparent, rgba(0, 0, 0, 0.7));
+        padding: 15px;
+        color: white;
+    }
+    
+    .related-image-overlay h6 {
+        margin: 0;
+        font-size: 0.9rem;
+    }
+    
+    .like-btn {
+        border: none;
+        background: none;
+        font-size: 1.2rem;
+        color: #ccc;
+        transition: var(--transition);
+    }
+    
+    .like-btn:hover {
+        color: #ff4757;
+        transform: scale(1.1);
+    }
+    
+    .like-btn.liked {
+        color: #ff4757;
+    }
+</style>
+{% endblock %}
+
+{% block gallery_js %}
+<script>
+    // Function to download image
+    function downloadImage(imageUrl) {
+        const link = document.createElement('a');
+        link.href = imageUrl;
+        link.download = 'joyworld-beauty-image.jpg';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+    
+    // Function to share image
+    function shareImage() {
+        if (navigator.share) {
+            navigator.share({
+                title: '{{ image.title }}',
+                text: 'Check out this beautiful image from Joy World Beauty Salon',
+                url: window.location.href,
+            });
+        } else {
+            // Fallback: copy URL to clipboard
+            navigator.clipboard.writeText(window.location.href).then(() => {
+                showNotification('Link copied to clipboard!', 'success');
+            });
+        }
+    }
+    
+    // Function to toggle like
+    async function toggleLike(imageId) {
+        if (!{{ user.is_authenticated|yesno:"true,false" }}) {
+            window.location.href = "{% url 'account_login' %}?next={{ request.path }}";
+            return;
+        }
+        
+        try {
+            const response = await fetch(`{% url 'gallery:toggle_like' %}${imageId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}',
+                    'Content-Type': 'application/json',
+                },
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                const likeButton = document.getElementById(`likeButton${imageId}`);
+                const likeCount = document.getElementById(`likeCount${imageId}`);
+                
+                likeCount.textContent = data.total_likes;
+                likeButton.classList.toggle('liked', data.liked);
+                
+                showNotification(data.message, 'success');
+            }
+        } catch (error) {
+            console.error('Error toggling like:', error);
+            showNotification('Error updating like', 'error');
+        }
+    }
+    
+    // Helper function for notifications
+    function showNotification(message, type = 'info') {
+        const alertClass = {
+            'success': 'alert-success',
+            'error': 'alert-danger',
+            'info': 'alert-info',
+            'warning': 'alert-warning'
+        }[type];
+        
+        const alertHTML = `
+            <div class="alert ${alertClass} alert-dismissible fade show position-fixed top-0 end-0 m-3"
+                 style="z-index: 9999;" role="alert">
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', alertHTML);
+        
+        setTimeout(() => {
+            const alert = document.querySelector('.alert:last-child');
+            if (alert) alert.remove();
+        }, 3000);
+    }
+</script>
+{% endblock %}

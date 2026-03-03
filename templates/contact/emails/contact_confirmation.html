@@ -1,0 +1,42 @@
+<!-- templates/contact/emails/contact_confirmation.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: linear-gradient(135deg, #a86ba3, #d6a7c0); color: white; padding: 30px; text-align: center; border-radius: 10px 10px 0 0; }
+        .content { padding: 30px; background: #f9f9f9; border-radius: 0 0 10px 10px; }
+        .footer { text-align: center; padding: 20px; color: #666; font-size: 12px; }
+        .btn { display: inline-block; padding: 12px 24px; background: #a86ba3; color: white; text-decoration: none; border-radius: 30px; margin: 10px 0; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>Joy World Home of Beauty</h1>
+        </div>
+        <div class="content">
+            <h2>Thank You for Contacting Us, {{ name }}!</h2>
+            <p>We have received your message regarding <strong>{{ subject }}</strong> and will get back to you within 24 hours.</p>
+            
+            <p>In the meantime, you might want to:</p>
+            <ul>
+                <li>Browse our <a href="{{ site_url }}/services">services</a></li>
+                <li>Book an <a href="{{ site_url }}/booking">appointment</a></li>
+                <li>Shop our <a href="{{ site_url }}/shop">products</a></li>
+            </ul>
+            
+            <p>If you have any urgent questions, feel free to call us at <strong>+44 161 123 4567</strong>.</p>
+            
+            <p>Best regards,<br>
+            The Joy World Team</p>
+        </div>
+        <div class="footer">
+            <p>© 2024 Joy World Home of Beauty. All rights reserved.</p>
+            <p>123 Beauty Street, Manchester M1 1AB, United Kingdom</p>
+            <p><a href="{{ site_url }}/contact/unsubscribe/">Unsubscribe from emails</a></p>
+        </div>
+    </div>
+</body>
+</html>

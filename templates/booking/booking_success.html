@@ -1,0 +1,82 @@
+<!-- templates/booking/booking_success.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Booking Confirmed | Joy World{% endblock %}
+
+{% block content %}
+<div class="container mt-5 pt-5">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card border-0 shadow-lg rounded-3">
+                <div class="card-body p-5 text-center">
+                    <div class="mb-4">
+                        <div class="success-icon text-success mb-3">
+                            <i class="fas fa-check-circle fa-5x"></i>
+                        </div>
+                        <h1 class="text-primary mb-3">Booking Confirmed!</h1>
+                        <p class="lead">Thank you for booking with Joy World Home of Beauty.</p>
+                    </div>
+                    
+                    <div class="booking-details bg-light p-4 rounded-3 mb-4 text-start">
+                        <h4 class="text-primary mb-4">Appointment Details</h4>
+                        
+                        <div class="row">
+                            <div class="col-md-6">
+                                <p><strong>Booking ID:</strong> #{{ booking.id }}</p>
+                                <p><strong>Service:</strong> {{ booking.service.name }}</p>
+                                <p><strong>Date:</strong> {{ booking.date|date:"F j, Y" }}</p>
+                                <p><strong>Time:</strong> {{ booking.time|time:"g:i A" }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p><strong>Duration:</strong> {{ booking.duration }} minutes</p>
+                                <p><strong>Total:</strong> £{{ booking.total_price }}</p>
+                                <p><strong>Status:</strong> 
+                                    <span class="badge bg-{{ booking.status|default:'warning' }}">
+                                        {{ booking.get_status_display }}
+                                    </span>
+                                </p>
+                            </div>
+                        </div>
+                        
+                        {% if booking.stylist %}
+                        <div class="mt-3">
+                            <p><strong>Assigned Stylist:</strong> {{ booking.stylist.name }}</p>
+                        </div>
+                        {% endif %}
+                        
+                        {% if booking.additional_services.all %}
+                        <div class="mt-3">
+                            <p><strong>Additional Services:</strong></p>
+                            <ul class="list-unstyled">
+                                {% for add_service in booking.additional_services.all %}
+                                <li>• {{ add_service.additional_service.name }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                        {% endif %}
+                    </div>
+                    
+                    <div class="alert alert-info mb-4">
+                        <h5><i class="fas fa-info-circle me-2"></i>Important Information</h5>
+                        <ul class="mb-0">
+                            <li>A confirmation email has been sent to <strong>{{ user.email }}</strong></li>
+                            <li>Please arrive 10 minutes before your appointment</li>
+                            <li>Cancellations must be made 24 hours in advance</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="d-grid gap-2 d-md-flex justify-content-md-center">
+                        <a href="{% url 'index' %}" class="btn btn-primary btn-lg px-4">
+                            <i class="fas fa-home me-2"></i>Back to Home
+                        </a>
+                        <a href="{% url 'booking_history' %}" class="btn btn-outline-primary btn-lg px-4">
+                            <i class="fas fa-calendar-alt me-2"></i>View All Bookings
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

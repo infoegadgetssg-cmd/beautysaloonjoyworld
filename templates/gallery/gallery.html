@@ -1,0 +1,622 @@
+<!-- templates/gallery/gallery.html -->
+{% extends 'gallery/base_gallery.html' %}
+{% load static %}
+{% load gallery_filters %}
+
+{% block gallery_content %}
+<!-- Gallery Section -->
+<section class="gallery-section">
+    <div class="container">
+        <!-- Gallery Filters -->
+        <div class="gallery-filters" data-aos="fade-up" data-aos-delay="300">
+            <button class="filter-btn active" data-filter="all">
+                <i class="fas fa-layer-group"></i>
+                All Work
+                {% if total_images %}
+                <span class="filter-count">{{ total_images }}</span>
+                {% endif %}
+            </button>
+            
+            {% for category in categories %}
+            <button class="filter-btn" data-filter="{{ category.slug }}">
+                {% if category.icon %}
+                <i class="{{ category.icon }}"></i>
+                {% else %}
+                <i class="fas fa-image"></i>
+                {% endif %}
+                {{ category.name }}
+                {% with count=category_counts|default:0 %}
+                    {% if category.slug in category_counts %}
+                        <span class="filter-count">{{ category_counts.category.slug }}</span>
+                    {% endif %}
+                {% endwith %}
+            </button>
+            {% endfor %}
+        </div>
+
+        <!-- Gallery Grid -->
+        <div class="gallery-grid" id="galleryGrid">
+            <!-- Images will be loaded by JavaScript -->
+        </div>
+
+        <!-- Loading Spinner -->
+        <div class="gallery-loading" id="galleryLoading">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <p class="mt-3">Loading beautiful images...</p>
+        </div>
+
+        <!-- No Results Message -->
+        <div class="no-results d-none" id="noResults">
+            <i class="fas fa-images"></i>
+            <h3>No Images Found</h3>
+            <p>Try selecting a different category or check back later for new content.</p>
+            <button class="btn btn-primary mt-3" onclick="filterGallery('all')">
+                <i class="fas fa-redo"></i> Show All Images
+            </button>
+        </div>
+
+        <!-- Load More Button -->
+        <div class="load-more-container d-none" id="loadMoreContainer">
+            <button class="btn load-more-btn" id="loadMoreBtn">
+                <i class="fas fa-plus"></i>
+                Load More Images
+            </button>
+        </div>
+    </div>
+</section>
+
+<!-- Before & After Section -->
+{% if before_after_images %}
+<section class="before-after-section">
+    <div class="container">
+        <div class="section-title text-center mb-5">
+            <h2 data-aos="fade-up" data-aos-delay="100">Transformations</h2>
+            <p data-aos="fade-up" data-aos-delay="200">
+                See the amazing results our clients have achieved
+            </p>
+        </div>
+
+        <div class="comparison-slider" id="comparisonSlider" data-aos="zoom-in" data-aos-delay="300">
+            <img src="{{ before_after_images.0.before_image.url }}" alt="Before" class="comparison-image" />
+            <div class="comparison-before">
+                <img src="{{ before_after_images.0.after_image.url }}" alt="After" class="comparison-image" />
+            </div>
+            <div class="comparison-slider-handle"></div>
+            <div class="comparison-label before-label">Before</div>
+            <div class="comparison-label after-label">After</div>
+        </div>
+
+        <div class="text-center mt-5" data-aos="fade-up" data-aos-delay="400">
+            <p class="mb-4">
+                Our skincare treatments deliver visible results. Drag the slider to see the transformation.
+            </p>
+            <a href="{% url 'services:services_list' %}" class="btn btn-primary" data-aos="zoom-in" data-aos-delay="500">
+                View Our Services
+            </a>
+        </div>
+    </div>
+</section>
+{% endif %}
+
+<!-- Testimonial Gallery -->
+<section class="testimonial-gallery">
+    <div class="container">
+        <div class="section-title text-center mb-5">
+            <h2 data-aos="fade-up">Client Love</h2>
+            <p data-aos="fade-up" data-aos-delay="100">
+                See what our clients are saying about their experience
+            </p>
+        </div>
+
+        <div class="row">
+            {% for testimonial in testimonials %}
+            <div class="col-lg-4 col-md-6 mb-4" data-aos="fade-up" data-aos-delay="{{ forloop.counter|add:1|multiply:100 }}">
+                <div class="testimonial-card">
+                    <div class="testimonial-content">
+                        <p>"{{ testimonial.content }}"</p>
+                    </div>
+                    <div class="testimonial-author">
+                        {% if testimonial.client_avatar %}
+                        <img src="{{ testimonial.client_avatar.url }}" alt="{{ testimonial.client_name }}" class="testimonial-avatar" />
+                        {% else %}
+                        <div class="testimonial-avatar-placeholder">
+                            <i class="fas fa-user"></i>
+                        </div>
+                        {% endif %}
+                        <div>
+                            <div class="testimonial-rating">
+                                {% for i in "12345" %}
+                                {% if forloop.counter <= testimonial.rating %}
+                                <i class="fas fa-star"></i>
+                                {% else %}
+                                <i class="far fa-star"></i>
+                                {% endif %}
+                                {% endfor %}
+                            </div>
+                            <h5>{{ testimonial.client_name }}</h5>
+                            <p class="text-muted">{{ testimonial.client_title|default:"Client" }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+
+<!-- CTA Section -->
+<section class="cta-section">
+    <div class="container">
+        <h2 data-aos="fade-up" data-aos-delay="100">
+            Ready for Your Transformation?
+        </h2>
+        <p data-aos="fade-up" data-aos-delay="200">
+            Book your appointment today and experience the Joy World difference.
+            Let us bring out your natural beauty.
+        </p>
+        <div data-aos="zoom-in" data-aos-delay="300">
+            <a href="{% url 'booking:booking' %}" class="btn btn-light btn-lg me-3">Book Appointment</a>
+            <a href="{% url 'contact:contact' %}" class="btn btn-outline-light btn-lg">Contact Us</a>
+        </div>
+    </div>
+</section>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // Global variables
+    let currentGalleryItems = [];
+    let filteredGalleryItems = [];
+    let currentLightboxIndex = 0;
+    let currentPage = 1;
+    let currentCategory = 'all';
+    let isLoading = false;
+    let hasMoreImages = true;
+
+    // DOM Elements
+    const galleryGrid = document.getElementById('galleryGrid');
+    const galleryLoading = document.getElementById('galleryLoading');
+    const noResults = document.getElementById('noResults');
+    const loadMoreContainer = document.getElementById('loadMoreContainer');
+    const loadMoreBtn = document.getElementById('loadMoreBtn');
+
+    // Initialize gallery
+    document.addEventListener('DOMContentLoaded', function() {
+        // Initialize gallery with initial data
+        currentGalleryItems = initialGalleryData.images;
+        filteredGalleryItems = [...currentGalleryItems];
+        
+        // Display initial images
+        displayGallery(currentGalleryItems);
+        
+        // Initialize AOS
+        if (typeof AOS !== 'undefined') {
+            AOS.init({
+                duration: 800,
+                easing: 'ease-in-out',
+                once: true,
+                offset: 100,
+            });
+        }
+        
+        // Set up filter buttons
+        setupFilterButtons();
+        
+        // Initialize before/after slider
+        initComparisonSlider();
+        
+        // Set up lightbox navigation
+        setupLightboxNavigation();
+        
+        // Set up keyboard navigation for lightbox
+        setupKeyboardNavigation();
+        
+        // Set up infinite scroll
+        setupInfiniteScroll();
+        
+        // Show welcome modal if needed
+        showWelcomeModal();
+    });
+
+    // Function to display gallery images
+    function displayGallery(items) {
+        if (items.length === 0) {
+            galleryGrid.innerHTML = '';
+            noResults.classList.remove('d-none');
+            loadMoreContainer.classList.add('d-none');
+            return;
+        }
+        
+        noResults.classList.add('d-none');
+        
+        // Create gallery items
+        let galleryHTML = '';
+        items.forEach((item, index) => {
+            let itemClass = 'gallery-item';
+            
+            // Add special layout classes
+            if (item.is_featured) itemClass += ' featured';
+            if (item.is_horizontal) itemClass += ' horizontal';
+            if (item.is_vertical) itemClass += ' vertical';
+            
+            // Stagger animation delay
+            const animationDelay = Math.min((index % 10) * 100, 500);
+            
+            galleryHTML += `
+                <div class="${itemClass}" data-aos="fade-up" data-aos-delay="${animationDelay}"
+                     data-category="${item.category_slug}" data-index="${index}">
+                    <img src="${item.image_url}" alt="${item.title}" class="gallery-img" loading="lazy">
+                    <div class="gallery-overlay">
+                        <span class="gallery-category category-${item.category_slug}" style="color: ${item.category_color}">
+                            ${item.category}
+                        </span>
+                        <h3 class="gallery-title">${item.title}</h3>
+                        <p class="gallery-description">${item.description}</p>
+                        <div class="image-stats">
+                            <div class="image-stat">
+                                <i class="fas fa-eye"></i>
+                                <span>${item.views}</span>
+                            </div>
+                            <div class="image-stat">
+                                <i class="fas fa-heart"></i>
+                                <span>${item.likes}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="gallery-zoom">
+                        <i class="fas fa-search-plus"></i>
+                    </div>
+                </div>
+            `;
+        });
+        
+        galleryGrid.innerHTML = galleryHTML;
+        
+        // Add click events to gallery items
+        document.querySelectorAll('.gallery-item').forEach((item, index) => {
+            item.addEventListener('click', function() {
+                openLightbox(index);
+            });
+        });
+        
+        // Show/hide load more button
+        if (hasMoreImages && items.length >= 12) {
+            loadMoreContainer.classList.remove('d-none');
+        } else {
+            loadMoreContainer.classList.add('d-none');
+        }
+        
+        // Refresh AOS
+        if (typeof AOS !== 'undefined') {
+            AOS.refresh();
+        }
+    }
+
+    // Function to setup filter buttons
+    function setupFilterButtons() {
+        document.querySelectorAll('.filter-btn').forEach(button => {
+            button.addEventListener('click', function() {
+                // Update active button
+                document.querySelectorAll('.filter-btn').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                this.classList.add('active');
+                
+                // Get category and filter
+                const category = this.getAttribute('data-filter');
+                currentCategory = category;
+                currentPage = 1;
+                
+                // Filter gallery
+                filterGallery(category);
+            });
+        });
+    }
+
+    // Function to filter gallery
+    async function filterGallery(category = 'all') {
+        try {
+            // Show loading
+            galleryLoading.classList.add('active');
+            galleryGrid.style.opacity = '0.5';
+            
+            // Fetch data from server
+            const response = await fetch(`${GALLERY_FILTER_URL}?category=${category}&page=1`);
+            const data = await response.json();
+            
+            // Update gallery items
+            filteredGalleryItems = data.images;
+            hasMoreImages = data.has_next;
+            currentPage = 1;
+            
+            // Hide loading
+            galleryLoading.classList.remove('active');
+            galleryGrid.style.opacity = '1';
+            
+            // Display filtered images
+            displayGallery(filteredGalleryItems);
+            
+            // Smooth scroll to gallery
+            galleryGrid.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            
+        } catch (error) {
+            console.error('Error filtering gallery:', error);
+            galleryLoading.classList.remove('active');
+            galleryGrid.style.opacity = '1';
+            
+            // Fallback to client-side filtering
+            if (category === 'all') {
+                filteredGalleryItems = currentGalleryItems;
+            } else {
+                filteredGalleryItems = currentGalleryItems.filter(
+                    item => item.category_slug === category
+                );
+            }
+            
+            displayGallery(filteredGalleryItems);
+        }
+    }
+
+    // Function to load more images
+    async function loadMoreImages() {
+        if (isLoading || !hasMoreImages) return;
+        
+        try {
+            isLoading = true;
+            loadMoreBtn.disabled = true;
+            loadMoreBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+            
+            const nextPage = currentPage + 1;
+            const response = await fetch(
+                `${GALLERY_FILTER_URL}?category=${currentCategory}&page=${nextPage}`
+            );
+            const data = await response.json();
+            
+            // Add new images
+            filteredGalleryItems = [...filteredGalleryItems, ...data.images];
+            hasMoreImages = data.has_next;
+            currentPage = nextPage;
+            
+            // Display updated gallery
+            displayGallery(filteredGalleryItems);
+            
+        } catch (error) {
+            console.error('Error loading more images:', error);
+        } finally {
+            isLoading = false;
+            loadMoreBtn.disabled = false;
+            loadMoreBtn.innerHTML = '<i class="fas fa-plus"></i> Load More Images';
+        }
+    }
+
+    // Function to open lightbox
+    function openLightbox(index) {
+        if (filteredGalleryItems.length === 0) return;
+        
+        currentLightboxIndex = index;
+        const item = filteredGalleryItems[index];
+        
+        // Update lightbox content
+        document.getElementById('lightboxImage').src = item.image_url;
+        document.getElementById('lightboxTitle').textContent = item.title;
+        document.getElementById('lightboxDescription').textContent = item.description;
+        document.getElementById('lightboxViews').textContent = item.views;
+        document.getElementById('lightboxLikes').textContent = item.likes;
+        document.getElementById('lightboxDate').textContent = item.created_at;
+        
+        // Show lightbox
+        const lightboxModal = new bootstrap.Modal(document.getElementById('lightboxModal'));
+        lightboxModal.show();
+    }
+
+    // Function to navigate lightbox
+    function navigateLightbox(direction) {
+        if (filteredGalleryItems.length === 0) return;
+        
+        if (direction === 'next') {
+            currentLightboxIndex = (currentLightboxIndex + 1) % filteredGalleryItems.length;
+        } else {
+            currentLightboxIndex = (currentLightboxIndex - 1 + filteredGalleryItems.length) % filteredGalleryItems.length;
+        }
+        
+        const item = filteredGalleryItems[currentLightboxIndex];
+        document.getElementById('lightboxImage').src = item.image_url;
+        document.getElementById('lightboxTitle').textContent = item.title;
+        document.getElementById('lightboxDescription').textContent = item.description;
+        document.getElementById('lightboxViews').textContent = item.views;
+        document.getElementById('lightboxLikes').textContent = item.likes;
+        document.getElementById('lightboxDate').textContent = item.created_at;
+    }
+
+    // Function to setup lightbox navigation
+    function setupLightboxNavigation() {
+        document.getElementById('lightboxPrev').addEventListener('click', () => navigateLightbox('prev'));
+        document.getElementById('lightboxNext').addEventListener('click', () => navigateLightbox('next'));
+    }
+
+    // Function to setup keyboard navigation
+    function setupKeyboardNavigation() {
+        document.addEventListener('keydown', function(e) {
+            const lightboxModal = document.getElementById('lightboxModal');
+            if (lightboxModal.classList.contains('show')) {
+                if (e.key === 'ArrowLeft') {
+                    navigateLightbox('prev');
+                } else if (e.key === 'ArrowRight') {
+                    navigateLightbox('next');
+                } else if (e.key === 'Escape') {
+                    const modal = bootstrap.Modal.getInstance(lightboxModal);
+                    modal.hide();
+                }
+            }
+        });
+    }
+
+    // Function to initialize before/after slider
+    function initComparisonSlider() {
+        const slider = document.getElementById('comparisonSlider');
+        if (!slider) return;
+        
+        const before = slider.querySelector('.comparison-before');
+        const handle = slider.querySelector('.comparison-slider-handle');
+        let isResizing = false;
+        
+        function updateSliderPosition(clientX) {
+            const sliderRect = slider.getBoundingClientRect();
+            const position = ((clientX - sliderRect.left) / sliderRect.width) * 100;
+            const boundedPosition = Math.max(0, Math.min(100, position));
+            
+            if (before) before.style.width = `${boundedPosition}%`;
+            if (handle) handle.style.left = `${boundedPosition}%`;
+        }
+        
+        // Mouse events
+        if (handle) {
+            handle.addEventListener('mousedown', function(e) {
+                isResizing = true;
+                e.preventDefault();
+            });
+        }
+        
+        slider.addEventListener('mousedown', function(e) {
+            isResizing = true;
+            updateSliderPosition(e.clientX);
+        });
+        
+        document.addEventListener('mousemove', function(e) {
+            if (!isResizing) return;
+            updateSliderPosition(e.clientX);
+        });
+        
+        document.addEventListener('mouseup', function() {
+            isResizing = false;
+        });
+        
+        // Touch events for mobile
+        if (handle) {
+            handle.addEventListener('touchstart', function(e) {
+                isResizing = true;
+                e.preventDefault();
+            });
+        }
+        
+        slider.addEventListener('touchstart', function(e) {
+            isResizing = true;
+            updateSliderPosition(e.touches[0].clientX);
+        });
+        
+        document.addEventListener('touchmove', function(e) {
+            if (!isResizing) return;
+            updateSliderPosition(e.touches[0].clientX);
+        });
+        
+        document.addEventListener('touchend', function() {
+            isResizing = false;
+        });
+    }
+
+    // Function to setup infinite scroll
+    function setupInfiniteScroll() {
+        if (!loadMoreBtn) return;
+        
+        loadMoreBtn.addEventListener('click', loadMoreImages);
+        
+        // Infinite scroll on window
+        window.addEventListener('scroll', function() {
+            if (!hasMoreImages || isLoading) return;
+            
+            const { scrollTop, scrollHeight, clientHeight } = document.documentElement;
+            const isAtBottom = scrollTop + clientHeight >= scrollHeight - 100;
+            
+            if (isAtBottom) {
+                loadMoreImages();
+            }
+        });
+    }
+
+    // Function to like/unlike an image
+    async function toggleImageLike(imageId) {
+        if (!USER_IS_AUTHENTICATED) {
+            // Redirect to login or show message
+            window.location.href = "{% url 'account_login' %}?next={{ request.path }}";
+            return;
+        }
+        
+        try {
+            const response = await fetch(`${LIKE_URL}${imageId}/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': CSRF_TOKEN,
+                    'Content-Type': 'application/json',
+                },
+            });
+            
+            const data = await response.json();
+            
+            if (data.success) {
+                // Update like count in UI
+                const likeElement = document.querySelector(`[data-image-id="${imageId}"] .like-count`);
+                if (likeElement) {
+                    likeElement.textContent = data.total_likes;
+                }
+                
+                // Toggle liked class
+                const likeButton = document.querySelector(`[data-image-id="${imageId}"] .like-btn`);
+                if (likeButton) {
+                    likeButton.classList.toggle('liked', data.liked);
+                }
+                
+                // Show feedback
+                showNotification(data.message, data.liked ? 'success' : 'info');
+            }
+        } catch (error) {
+            console.error('Error toggling like:', error);
+            showNotification('Error updating like', 'error');
+        }
+    }
+
+    // Helper function to show notifications
+    function showNotification(message, type = 'info') {
+        const alertClass = {
+            'success': 'alert-success',
+            'error': 'alert-danger',
+            'info': 'alert-info',
+            'warning': 'alert-warning'
+        }[type];
+        
+        const alertHTML = `
+            <div class="alert ${alertClass} alert-dismissible fade show position-fixed top-0 end-0 m-3"
+                 style="z-index: 9999;" role="alert">
+                ${message}
+                <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', alertHTML);
+        
+        // Auto-remove after 3 seconds
+        setTimeout(() => {
+            const alert = document.querySelector('.alert:last-child');
+            if (alert) {
+                alert.remove();
+            }
+        }, 3000);
+    }
+
+    // Function to show welcome modal
+    function showWelcomeModal() {
+        {% if user.is_authenticated and not request.session.welcome_shown %}
+        setTimeout(() => {
+            const welcomeModal = new bootstrap.Modal(document.getElementById('welcomeBackModal'));
+            welcomeModal.show();
+        }, 1500);
+        {% endif %}
+    }
+
+    // Make functions available globally (for template use)
+    window.filterGallery = filterGallery;
+    window.openLightbox = openLightbox;
+    window.toggleImageLike = toggleImageLike;
+</script>
+{% endblock %}

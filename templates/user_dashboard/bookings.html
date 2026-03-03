@@ -1,0 +1,92 @@
+<!-- templates/user_dashboard/bookings.html -->
+{% extends 'user_dashboard/base_dashboard.html' %}
+
+{% block dashboard_content %}
+<h3 class="mb-4">My Bookings</h3>
+<p class="text-muted mb-4">You have {{ bookings.count }} booking{{ bookings.count|pluralize }}</p>
+
+{% if bookings %}
+    <div class="table-responsive">
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Service</th>
+                    <th>Date & Time</th>
+                    <th>Stylist</th>
+                    <th>Status</th>
+                    <th>Price</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for booking in bookings %}
+                <tr>
+                    <td>
+                        <strong>{{ booking.service.name }}</strong>
+                        <br>
+                        <small class="text-muted">{{ booking.service.category.name }}</small>
+                    </td>
+                    <td>
+                        {{ booking.date|date:"M d, Y" }}
+                        <br>
+                        <small class="text-muted">{{ booking.time|time:"g:i A" }}</small>
+                    </td>
+                    <td>{{ booking.stylist.name|default:"Any Available" }}</td>
+                    <td>
+                        <span class="booking-status status-{{ booking.status }}">
+                            {{ booking.status|title }}
+                        </span>
+                    </td>
+                    <td>£{{ booking.total_price }}</td>
+                    <td>
+                        {% if booking.status in 'pending confirmed' %}
+                            <a href="{% url 'user_dashboard:cancel_booking' booking.id %}" 
+                               class="btn btn-sm btn-outline-danger"
+                               onclick="return confirm('Are you sure you want to cancel this booking?')">
+                                Cancel
+                            </a>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    
+    <!-- Pagination -->
+    {% if bookings.has_other_pages %}
+    <nav aria-label="Bookings navigation">
+        <ul class="pagination justify-content-center">
+            {% if bookings.has_previous %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ bookings.previous_page_number }}">Previous</a>
+            </li>
+            {% endif %}
+            
+            {% for num in bookings.paginator.page_range %}
+            <li class="page-item {% if bookings.number == num %}active{% endif %}">
+                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+            </li>
+            {% endfor %}
+            
+            {% if bookings.has_next %}
+            <li class="page-item">
+                <a class="page-link" href="?page={{ bookings.next_page_number }}">Next</a>
+            </li>
+            {% endif %}
+        </ul>
+    </nav>
+    {% endif %}
+{% else %}
+    <div class="text-center py-5">
+        <div class="mb-4">
+            <i class="fas fa-calendar-times text-muted fa-4x"></i>
+        </div>
+        <h4 class="mb-3">No Bookings Yet</h4>
+        <p class="text-muted mb-4">You haven't made any bookings yet. Book your first appointment today!</p>
+        <a href="{% url 'booking:booking' %}" class="btn btn-primary btn-lg">
+            <i class="fas fa-calendar-plus me-2"></i>Book an Appointment
+        </a>
+    </div>
+{% endif %}
+{% endblock %}

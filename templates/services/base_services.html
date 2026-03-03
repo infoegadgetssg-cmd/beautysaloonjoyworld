@@ -1,0 +1,213 @@
+<!-- templates/services/base_services.html -->
+{% extends 'base.html' %}
+{% load static %}
+
+{% block extra_css %}
+<style>
+    /* Services-specific styles */
+    .services-hero {
+        background: linear-gradient(rgba(168, 107, 163, 0.9), rgba(168, 107, 163, 0.9)),
+                    url('https://res.cloudinary.com/demo/image/upload/v1681234567/services-header.jpg') center/cover no-repeat;
+        padding: 180px 0 100px;
+        color: white;
+        text-align: center;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .services-hero h1 {
+        font-size: 3.5rem;
+        font-weight: 700;
+        margin-bottom: 20px;
+        animation: fadeInDown 1s ease;
+    }
+
+    .services-hero p {
+        font-size: 1.2rem;
+        max-width: 600px;
+        margin: 0 auto 30px;
+        opacity: 0.9;
+        animation: fadeInUp 1s ease 0.3s forwards;
+        opacity: 0;
+    }
+
+    .category-nav {
+        background: white;
+        box-shadow: 0 2px 15px rgba(0,0,0,0.1);
+        padding: 20px 0;
+        position: sticky;
+        top: 76px;
+        z-index: 1000;
+    }
+
+    .category-nav .nav {
+        justify-content: center;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .category-nav .nav-link {
+        color: var(--dark);
+        padding: 10px 20px;
+        border-radius: 30px;
+        border: 2px solid transparent;
+        transition: all 0.3s ease;
+        font-weight: 500;
+    }
+
+    .category-nav .nav-link.active,
+    .category-nav .nav-link:hover {
+        background: var(--primary-dark);
+        color: white;
+        border-color: var(--primary-dark);
+    }
+
+    .service-card {
+        background: white;
+        border-radius: 15px;
+        overflow: hidden;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.08);
+        transition: all 0.3s ease;
+        height: 100%;
+        margin-bottom: 30px;
+    }
+
+    .service-card:hover {
+        transform: translateY(-10px);
+        box-shadow: 0 15px 30px rgba(0,0,0,0.15);
+    }
+
+    .service-card-img {
+        height: 250px;
+        width: 100%;
+        object-fit: cover;
+        transition: transform 0.5s ease;
+    }
+
+    .service-card:hover .service-card-img {
+        transform: scale(1.05);
+    }
+
+    .service-card-body {
+        padding: 25px;
+    }
+
+    .service-price {
+        font-size: 1.5rem;
+        font-weight: 700;
+        color: var(--primary-dark);
+        margin: 10px 0;
+    }
+
+    .service-price .special-price {
+        color: #dc3545;
+        text-decoration: line-through;
+        font-size: 1.2rem;
+        margin-right: 10px;
+    }
+
+    .service-badge {
+        position: absolute;
+        top: 15px;
+        right: 15px;
+        background: var(--primary-dark);
+        color: white;
+        padding: 5px 15px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        z-index: 1;
+    }
+
+    .service-features {
+        list-style: none;
+        padding: 0;
+        margin: 15px 0;
+    }
+
+    .service-features li {
+        padding: 5px 0;
+        position: relative;
+        padding-left: 25px;
+    }
+
+    .service-features li:before {
+        content: "✓";
+        position: absolute;
+        left: 0;
+        color: var(--primary-dark);
+        font-weight: bold;
+    }
+
+    .rating {
+        color: #ffc107;
+    }
+
+    .faq-accordion .accordion-item {
+        border: none;
+        margin-bottom: 15px;
+        border-radius: 10px;
+        overflow: hidden;
+        box-shadow: 0 3px 10px rgba(0,0,0,0.08);
+    }
+
+    .faq-accordion .accordion-button {
+        background: var(--primary-light);
+        border: none;
+        font-weight: 600;
+        padding: 20px;
+    }
+
+    .faq-accordion .accordion-button:not(.collapsed) {
+        background: var(--primary-medium);
+        color: white;
+    }
+
+    .faq-accordion .accordion-body {
+        padding: 20px;
+        background: white;
+    }
+
+    @keyframes fadeInDown {
+        from {
+            opacity: 0;
+            transform: translateY(-30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes fadeInUp {
+        from {
+            opacity: 0;
+            transform: translateY(30px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @media (max-width: 768px) {
+        .services-hero {
+            padding: 150px 0 80px;
+        }
+        
+        .services-hero h1 {
+            font-size: 2.5rem;
+        }
+        
+        .category-nav .nav {
+            justify-content: flex-start;
+            overflow-x: auto;
+            padding-bottom: 10px;
+        }
+        
+        .category-nav .nav-link {
+            white-space: nowrap;
+        }
+    }
+</style>
+{% endblock %}

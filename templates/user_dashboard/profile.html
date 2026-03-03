@@ -1,0 +1,109 @@
+<!-- templates/user_dashboard/profile.html -->
+{% extends 'user_dashboard/base_dashboard.html' %}
+
+{% block dashboard_content %}
+<h3 class="mb-4">Edit Profile</h3>
+
+{% if messages %}
+<div class="alert alert-success alert-dismissible fade show" role="alert">
+    {% for message in messages %}
+    {{ message }}
+    {% endfor %}
+    <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+</div>
+{% endif %}
+
+<form method="post" enctype="multipart/form-data">
+    {% csrf_token %}
+    
+    <div class="row mb-4">
+        <div class="col-md-3 text-center">
+            <div class="user-avatar mb-3 mx-auto" style="width: 120px; height: 120px;">
+                {% if user.profile_picture %}
+                    <img src="{{ user.profile_picture.url }}" alt="{{ user.get_full_name }}" 
+                         class="img-fluid rounded-circle">
+                {% else %}
+                    <i class="fas fa-user fa-3x"></i>
+                {% endif %}
+            </div>
+            <div class="mb-3">
+                <label for="id_profile_picture" class="form-label">Change Photo</label>
+                {{ form.profile_picture }}
+            </div>
+        </div>
+        
+        <div class="col-md-9">
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">First Name</label>
+                    {{ form.first_name }}
+                    {% if form.first_name.errors %}
+                    <div class="text-danger small">{{ form.first_name.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Last Name</label>
+                    {{ form.last_name }}
+                    {% if form.last_name.errors %}
+                    <div class="text-danger small">{{ form.last_name.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+            
+            <div class="row">
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Email</label>
+                    {{ form.email }}
+                    {% if form.email.errors %}
+                    <div class="text-danger small">{{ form.email.errors }}</div>
+                    {% endif %}
+                </div>
+                <div class="col-md-6 mb-3">
+                    <label class="form-label">Phone</label>
+                    {{ form.phone }}
+                    {% if form.phone.errors %}
+                    <div class="text-danger small">{{ form.phone.errors }}</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Loyalty Information -->
+    {% if user_loyalty %}
+    <div class="card mb-4">
+        <div class="card-header bg-primary-light">
+            <h5 class="mb-0"><i class="fas fa-crown me-2"></i>Loyalty Program</h5>
+        </div>
+        <div class="card-body">
+            <div class="row align-items-center">
+                <div class="col-md-4 text-center">
+                    <div class="display-4 fw-bold text-primary">{{ user_loyalty.points }}</div>
+                    <small>Points</small>
+                </div>
+                <div class="col-md-4 text-center">
+                    <div class="loyalty-badge mb-2">
+                        <i class="{{ user_loyalty.level.icon_class|default:'fas fa-crown' }} me-2"></i>
+                        {{ user_loyalty.level.get_level_display|default:'Beauty Explorer' }}
+                    </div>
+                    <small>Current Level</small>
+                </div>
+                <div class="col-md-4 text-center">
+                    <div class="display-6 fw-bold text-success">£{{ user_loyalty.total_spent|floatformat:2 }}</div>
+                    <small>Total Spent</small>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+    
+    <div class="d-flex gap-2">
+        <button type="submit" class="btn btn-primary">
+            <i class="fas fa-save me-2"></i>Update Profile
+        </button>
+        <a href="{% url 'user_dashboard:password_change' %}" class="btn btn-outline-primary">
+            Change Password
+        </a>
+    </div>
+</form>
+{% endblock %}

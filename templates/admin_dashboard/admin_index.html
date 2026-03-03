@@ -1,0 +1,442 @@
+<!-- templates/dashboard/admin_index.html -->
+{% extends 'admin_dashboard/base.html' %}
+{% load static %}
+
+{% block title %}Dashboard Overview | Joy World Beauty{% endblock %}
+
+{% block extra_css %}
+<style>
+    :root {
+        --primary-light: #f6e9f0;
+        --white: #ffffff;
+        --primary-medium: #d6a7c0;
+        --primary-dark: #a86ba3;
+        --dark: #333333;
+        --success: #28a745;
+        --warning: #ffc107;
+        --danger: #dc3545;
+        --transition: all 0.3s ease;
+      }
+
+      body {
+        font-family: "Poppins", sans-serif;
+        background-color: #f8f9fa;
+      }
+
+      .admin-container {
+        min-height: 100vh;
+      }
+
+      .admin-sidebar {
+        background: var(--white);
+        min-height: 100vh;
+        box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+        position: fixed;
+        width: 250px;
+        left: 0;
+        top: 0;
+        padding-top: 70px;
+      }
+
+      .admin-content {
+        margin-left: 250px;
+        padding: 20px;
+      }
+
+      .admin-navbar {
+        background: var(--primary-dark);
+        color: white;
+        position: fixed;
+        top: 0;
+        width: 100%;
+        z-index: 1000;
+        height: 60px;
+      }
+
+      .admin-nav .nav-link {
+        color: var(--dark);
+        padding: 12px 20px;
+        border-left: 3px solid transparent;
+        transition: var(--transition);
+        font-weight: 500;
+      }
+
+      .admin-nav .nav-link.active,
+      .admin-nav .nav-link:hover {
+        background-color: var(--primary-light);
+        color: var(--primary-dark);
+        border-left-color: var(--primary-dark);
+      }
+
+      .stats-card {
+        background: white;
+        border-radius: 10px;
+        padding: 25px;
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+        border-top: 4px solid var(--primary-dark);
+        height: 100%;
+        margin-bottom: 20px;
+        transition: transform 0.3s;
+      }
+
+      .stats-card:hover {
+        transform: translateY(-5px);
+      }
+
+      .stats-number {
+        font-size: 2.5rem;
+        font-weight: 700;
+        color: var(--primary-dark);
+      }
+
+      .status-badge {
+        padding: 5px 10px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        display: inline-block;
+        }
+        
+        .status-pending { background: #fff3cd; color: #856404; }
+        .status-confirmed { background: #d1ecf1; color: #0c5460; }
+        .status-completed { background: #d4edda; color: #155724; }
+        .status-cancelled { background: #f8d7da; color: #721c24; }
+
+      .booking-card,
+      .customer-card {
+        background: white;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 10px;
+        box-shadow: 0 2px 5px rgba(0, 0, 0, 0.05);
+        border-left: 4px solid var(--primary-dark);
+        transition: var(--transition);
+      }
+
+      .booking-card:hover,
+      .customer-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+      }
+
+      .status-badge {
+        padding: 6px 12px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        display: inline-block;
+      }
+
+      .status-pending {
+        background: #fff3cd;
+        color: #856404;
+      }
+      .status-confirmed {
+        background: #d1ecf1;
+        color: #0c5460;
+      }
+      .status-completed {
+        background: #d4edda;
+        color: #155724;
+      }
+      .status-cancelled {
+        background: #f8d7da;
+        color: #721c24;
+      }
+
+      .user-avatar {
+        width: 40px;
+        height: 40px;
+        background: var(--primary-medium);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: white;
+        font-weight: 600;
+      }
+
+      .service-card {
+        background: white;
+        border-radius: 8px;
+        padding: 15px;
+        margin-bottom: 15px;
+        border: 1px solid #eaeaea;
+      }
+
+      .service-img {
+        width: 80px;
+        height: 80px;
+        object-fit: cover;
+        border-radius: 8px;
+      }
+
+      .modal-xl-custom {
+        max-width: 800px;
+      }
+
+      @media (max-width: 768px) {
+        .admin-sidebar {
+          width: 100%;
+          position: relative;
+          min-height: auto;
+          padding-top: 0;
+        }
+
+        .admin-content {
+          margin-left: 0;
+        }
+      }
+
+</style>
+{% endblock %}
+
+{% block content %}
+<!-- Stats Row -->
+<div class="row">
+    <div class="col-md-3">
+        <div class="stats-card">
+            <div class="stats-icon" style="background: var(--primary-light); color: var(--primary-dark);">
+                <i class="fas fa-calendar-check"></i>
+            </div>
+            <div class="stats-number">{{ total_bookings }}</div>
+            <div class="stats-title">Total Bookings</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card">
+            <div class="stats-icon" style="background: #d4edda; color: #155724;">
+                <i class="fas fa-users"></i>
+            </div>
+            <div class="stats-number">{{ total_customers }}</div>
+            <div class="stats-title">Total Customers</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card">
+            <div class="stats-icon" style="background: #d1ecf1; color: #0c5460;">
+                <i class="fas fa-pound-sign"></i>
+            </div>
+            <div class="stats-number">{{ total_revenue }}</div>
+            <div class="stats-title">Total Revenue</div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="stats-card">
+            <div class="stats-icon" style="background: #fff3cd; color: #856404;">
+                <i class="fas fa-calendar-day"></i>
+            </div>
+            <div class="stats-number">{{ today_bookings }}</div>
+            <div class="stats-title">Today's Bookings</div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row -->
+<div class="row">
+    <div class="col-md-8">
+        <div class="chart-container">
+            <h5>Booking Trends</h5>
+            <canvas id="bookingChart" height="250"></canvas>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="chart-container">
+            <h5>Service Popularity</h5>
+            <canvas id="serviceChart" height="250"></canvas>
+        </div>
+    </div>
+</div>
+
+<!-- Quick Actions & Recent Activity -->
+<div class="row">
+    <div class="col-md-6">
+        <div class="quick-actions">
+            <h5>Quick Actions</h5>
+            <div class="row mt-3">
+                <div class="col-6 mb-3">
+                    <a href="{% url 'admin_dashboard:bookings' %}" class="action-btn">
+                        <i class="fas fa-plus"></i>
+                        <span>Add Booking</span>
+                    </a>
+                </div>
+                <div class="col-6 mb-3">
+                    <a href="{% url 'admin_dashboard:services' %}" class="action-btn">
+                        <i class="fas fa-spa"></i>
+                        <span>Add Service</span>
+                    </a>
+                </div>
+                <div class="col-6 mb-3">
+                    <a href="{% url 'admin_dashboard:products' %}" class="action-btn">
+                        <i class="fas fa-box"></i>
+                        <span>Add Product</span>
+                    </a>
+                </div>
+                <div class="col-6 mb-3">
+                    <button class="action-btn" onclick="showNotificationModal()">
+                        <i class="fas fa-bell"></i>
+                        <span>Send Notification</span>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="activity-card">
+            <h5>Recent Activity</h5>
+            <div id="recentActivity">
+                {% for activity in recent_activities %}
+                <div class="activity-item">
+                    <div class="activity-icon" style="background: var(--primary-medium);">
+                        <i class="fas fa-{{ activity.get_icon }}"></i>
+                    </div>
+                    <div>
+                        <div class="fw-bold">{{ activity.get_activity_type_display }}</div>
+                        <small class="text-muted">{{ activity.description }}</small>
+                    </div>
+                    <small class="text-muted ms-auto">{{ activity.created_at|timesince }} ago</small>
+                </div>
+                {% empty %}
+                <div class="text-center text-muted py-3">
+                    <i class="fas fa-inbox fa-2x mb-2"></i>
+                    <p>No recent activity</p>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent Bookings Table -->
+<div class="row mt-4">
+    <div class="col-12">
+        <div class="activity-card">
+            <h5>Recent Bookings</h5>
+            <div class="table-responsive">
+                <table class="table table-sm">
+                    <thead>
+                        <tr>
+                            <th>Customer</th>
+                            <th>Service</th>
+                            <th>Date & Time</th>
+                            <th>Status</th>
+                            <th>Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for booking in recent_bookings %}
+                        <tr>
+                            <td>
+                                <div class="fw-bold">
+                                    {{ booking.user.get_full_name|default:booking.user.email }}
+                                </div>
+                            </td>
+                            <td>{{ booking.service.name }}</td>
+                            <td>
+                                <div class="fw-bold">{{ booking.date|date:"M d, Y" }}</div>
+                                <small class="text-muted">{{ booking.time|time:"g:i A" }}</small>
+                            </td>
+                            <td>
+                                <span class="status-badge status-{{ booking.status }}">
+                                    {{ booking.get_status_display }}
+                                </span>
+                            </td>
+                            <td class="fw-bold">£{{ booking.total_price }}</td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted">
+                                No recent bookings
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Initialize charts
+    document.addEventListener('DOMContentLoaded', function() {
+        // Booking Trends Chart
+        const bookingCtx = document.getElementById('bookingChart');
+        if (bookingCtx) {
+            new Chart(bookingCtx.getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun'],
+                    datasets: [{
+                        label: 'Bookings',
+                        data: [12, 19, 15, 25, 22, 30],
+                        borderColor: '#a86ba3',
+                        backgroundColor: 'rgba(168, 107, 163, 0.1)',
+                        tension: 0.4,
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { display: false }
+                    }
+                }
+            });
+        }
+
+        // Service Popularity Chart
+        const serviceCtx = document.getElementById('serviceChart');
+        if (serviceCtx) {
+            new Chart(serviceCtx.getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: [
+                        {% for service in popular_services %}
+                        '{{ service.name }}',
+                        {% endfor %}
+                    ],
+                    datasets: [{
+                        data: [
+                            {% for service in popular_services %}
+                            {{ service.booking_count }},
+                            {% endfor %}
+                        ],
+                        backgroundColor: [
+                            '#a86ba3', '#d6a7c0', '#f6e9f0', '#ffc107', '#17a2b8'
+                        ]
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    plugins: {
+                        legend: { position: 'bottom' }
+                    }
+                }
+            });
+        }
+    });
+
+    // Real-time stats update
+    function updateDashboardStats() {
+        fetch('/dashboard/api/stats/')
+            .then(response => response.json())
+            .then(data => {
+                // Update notification badges
+                document.getElementById('pendingBadge').textContent = data.pending_bookings || 0;
+                document.getElementById('messagesBadge').textContent = data.unread_messages || 0;
+                document.getElementById('stockBadge').textContent = data.low_stock_products || 0;
+            })
+            .catch(error => console.error('Error fetching stats:', error));
+    }
+
+    // Update stats every 30 seconds
+    setInterval(updateDashboardStats, 30000);
+    
+    // Initial update
+    updateDashboardStats();
+</script>
+{% endblock %}

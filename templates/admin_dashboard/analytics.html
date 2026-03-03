@@ -1,0 +1,522 @@
+<!-- templates/admin_dashboard/analytics.html -->
+{% extends 'admin_dashboard/base.html' %}
+
+{% block title %}Analytics Dashboard | Joy World Beauty Admin{% endblock %}
+
+{% block extra_css %}
+<style>
+    .chart-container {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        height: 100%;
+        min-height: 350px;
+        display: flex;
+        flex-direction: column;
+    }
+    
+    .chart-container h6 {
+        margin-bottom: 15px;
+        color: #333;
+        font-weight: 600;
+    }
+    
+    .chart-wrapper {
+        position: relative;
+        width: 100%;
+        height: 250px;
+        flex: 1;
+    }
+    
+    .metric-card {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+        text-align: center;
+        transition: transform 0.3s;
+        height: 100%;
+        min-height: 150px;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+    }
+    
+    .metric-card:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    
+    .metric-value {
+        font-size: 2.2rem;
+        font-weight: 700;
+        color: var(--primary-dark);
+        margin: 10px 0;
+        line-height: 1.2;
+    }
+    
+    .metric-label {
+        color: #666;
+        font-size: 0.85rem;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+    }
+    
+    .metric-change {
+        font-size: 0.8rem;
+        font-weight: 600;
+    }
+    
+    .change-positive { color: #28a745; }
+    .change-negative { color: #dc3545; }
+    
+    .date-range-picker {
+        background: white;
+        border-radius: 10px;
+        padding: 15px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    }
+
+    @media (max-width: 768px) {
+        .chart-container {
+            min-height: 300px;
+        }
+        
+        .chart-wrapper {
+            height: 200px;
+        }
+        
+        .metric-value {
+            font-size: 1.8rem;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4>Analytics Dashboard</h4>
+    <div>
+        <div class="btn-group">
+            <button class="btn btn-outline-primary active" onclick="setDateRange('30d')">30 Days</button>
+            <button class="btn btn-outline-primary" onclick="setDateRange('90d')">90 Days</button>
+            <button class="btn btn-outline-primary" onclick="setDateRange('1y')">1 Year</button>
+        </div>
+    </div>
+</div>
+
+<!-- Metrics Cards -->
+<!-- Update the metrics section in analytics.html -->
+<div class="row mb-4">
+    <div class="col-lg-3 col-md-6 col-sm-6 mb-3">
+        <div class="metric-card">
+            <div class="metric-label">Total Revenue</div>
+            <div class="metric-value">£{{ total_revenue|floatformat:2 }}</div>
+            <div class="metric-change {% if revenue_growth > 0 %}change-positive{% else %}change-negative{% endif %}">
+                <i class="fas fa-arrow-{% if revenue_growth > 0 %}up{% else %}down{% endif %} me-1"></i>
+                {{ revenue_growth|floatformat:1 }}% from last month
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6 col-sm-6 mb-3">
+        <div class="metric-card">
+            <div class="metric-label">Monthly Revenue</div>
+            <div class="metric-value">£{{ monthly_revenue|floatformat:2 }}</div>
+            <div class="metric-change change-positive">
+                <i class="fas fa-calendar me-1"></i>
+                Last 30 days
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6 col-sm-6 mb-3">
+        <div class="metric-card">
+            <div class="metric-label">Average Order</div>
+            <div class="metric-value">£{{ avg_order_value|floatformat:2 }}</div>
+            <div class="metric-change">
+                <i class="fas fa-shopping-cart me-1"></i>
+                Per booking
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-md-6 col-sm-6 mb-3">
+        <div class="metric-card">
+            <div class="metric-label">Repeat Rate</div>
+            <div class="metric-value">{{ repeat_rate|floatformat:1 }}%</div>
+            <div class="metric-change">
+                <i class="fas fa-users me-1"></i>
+                Returning customers
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row 1 -->
+<div class="row mb-4">
+    <div class="col-xl-8 col-lg-7 mb-4">
+        <div class="chart-container">
+            <h6>Revenue Overview (Last 6 Months)</h6>
+            <div class="chart-wrapper">
+                <canvas id="revenueChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-4 col-lg-5 mb-4">
+        <div class="chart-container">
+            <h6>Service Categories</h6>
+            <div class="chart-wrapper">
+                <canvas id="serviceCategoryChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row 2 -->
+<div class="row mb-4">
+    <div class="col-xl-6 col-lg-6 mb-4">
+        <div class="chart-container">
+            <h6>Customer Growth (Last 6 Months)</h6>
+            <div class="chart-wrapper">
+                <canvas id="customerGrowthChart"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-xl-6 col-lg-6 mb-4">
+        <div class="chart-container">
+            <h6>Booking Trends (This Month vs Last Month)</h6>
+            <div class="chart-wrapper">
+                <canvas id="bookingTrendsChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Charts Row 3 - Daily Bookings -->
+<div class="row mb-4">
+    <div class="col-12 mb-4">
+        <div class="chart-container">
+            <h6>Daily Bookings (Last 30 Days)</h6>
+            <div class="chart-wrapper" style="height: 300px;">
+                <canvas id="dailyBookingsChart"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Top Services Table -->
+<div class="row">
+    <div class="col-12">
+        <div class="chart-container">
+            <h6 class="mb-3">Top Performing Services</h6>
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                        <tr>
+                            <th>Service</th>
+                            <th>Category</th>
+                            <th>Bookings</th>
+                            <th>Revenue</th>
+                            <th>Avg Rating</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for service in top_services %}
+                        <tr>
+                            <td>
+                                <div class="fw-bold">{{ service.name }}</div>
+                                <small class="text-muted">£{{ service.price }}</small>
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark">{{ service.category.name|default:"Uncategorized" }}</span>
+                            </td>
+                            <td>{{ service.booking_count }}</td>
+                            <td class="fw-bold">£{{ service.total_revenue|default:"0"|floatformat:2 }}</td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <span class="text-warning me-1">
+                                        {% for i in "12345"|make_list %}
+                                            {% if forloop.counter <= service.avg_rating|floatformat:0 %}
+                                            <i class="fas fa-star"></i>
+                                            {% elif forloop.counter <= service.avg_rating|add:0.5 %}
+                                            <i class="fas fa-star-half-alt"></i>
+                                            {% else %}
+                                            <i class="far fa-star"></i>
+                                            {% endif %}
+                                        {% endfor %}
+                                    </span>
+                                    <span class="ms-1">{{ service.avg_rating|floatformat:1|default:"0.0" }}</span>
+                                </div>
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center text-muted py-4">
+                                <i class="fas fa-chart-line fa-2x mb-3"></i>
+                                <p>No service data available</p>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    // Initialize charts with fixed sizing
+    document.addEventListener('DOMContentLoaded', function() {
+        // Revenue Chart
+        const revenueCtx = document.getElementById('revenueChart');
+        if (revenueCtx) {
+            new Chart(revenueCtx.getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: {{ monthly_labels|safe }},
+                    datasets: [{
+                        label: 'Revenue (£)',
+                        data: {{ monthly_data|safe }},
+                        borderColor: '#a86ba3',
+                        backgroundColor: 'rgba(168, 107, 163, 0.1)',
+                        borderWidth: 2,
+                        pointBackgroundColor: '#a86ba3',
+                        pointBorderColor: '#fff',
+                        pointBorderWidth: 2,
+                        pointRadius: 4,
+                        pointHoverRadius: 6,
+                        tension: 0.3,
+                        fill: true
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return '£' + context.raw.toFixed(2);
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { 
+                                color: 'rgba(0,0,0,0.05)',
+                                drawBorder: false
+                            },
+                            ticks: {
+                                callback: function(value) {
+                                    return '£' + value;
+                                }
+                            }
+                        },
+                        x: {
+                            grid: { display: false }
+                        }
+                    }
+                }
+            });
+        }
+        
+        // Service Category Chart
+        const serviceCategoryCtx = document.getElementById('serviceCategoryChart');
+        if (serviceCategoryCtx) {
+            new Chart(serviceCategoryCtx.getContext('2d'), {
+                type: 'doughnut',
+                data: {
+                    labels: {{ category_labels|safe }},
+                    datasets: [{
+                        data: {{ category_data|safe }},
+                        backgroundColor: [
+                            '#a86ba3', '#d6a7c0', '#f6e9f0', '#ffc107', '#17a2b8', '#6c757d'
+                        ],
+                        borderWidth: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { 
+                            position: 'bottom',
+                            labels: { boxWidth: 12, padding: 15 }
+                        }
+                    },
+                    cutout: '60%'
+                }
+            });
+        }
+        
+        // Customer Growth Chart
+        const customerGrowthCtx = document.getElementById('customerGrowthChart');
+        if (customerGrowthCtx) {
+            new Chart(customerGrowthCtx.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: {{ customer_growth_labels|safe }},
+                    datasets: [
+                        {
+                            label: 'New Customers',
+                            data: {{ new_customers_data|safe }},
+                            backgroundColor: '#28a745',
+                            borderRadius: 5,
+                            barPercentage: 0.6,
+                            categoryPercentage: 0.8
+                        },
+                        {
+                            label: 'Returning Customers',
+                            data: {{ returning_customers_data|safe }},
+                            backgroundColor: '#17a2b8',
+                            borderRadius: 5,
+                            barPercentage: 0.6,
+                            categoryPercentage: 0.8
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { 
+                            position: 'top',
+                            labels: { boxWidth: 12, padding: 15 }
+                        }
+                    },
+                    scales: {
+                        y: { 
+                            beginAtZero: true,
+                            grid: { color: 'rgba(0,0,0,0.05)' },
+                            ticks: { stepSize: 1 }
+                        },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+        
+        // Booking Trends Chart
+        const bookingTrendsCtx = document.getElementById('bookingTrendsChart');
+        if (bookingTrendsCtx) {
+            new Chart(bookingTrendsCtx.getContext('2d'), {
+                type: 'line',
+                data: {
+                    labels: ['Week 1', 'Week 2', 'Week 3', 'Week 4'],
+                    datasets: [
+                        {
+                            label: 'This Month',
+                            data: {{ current_month_data|safe }},
+                            borderColor: '#a86ba3',
+                            backgroundColor: 'rgba(168, 107, 163, 0.1)',
+                            borderWidth: 2,
+                            pointBackgroundColor: '#a86ba3',
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2,
+                            pointRadius: 4,
+                            tension: 0.3,
+                            fill: true
+                        },
+                        {
+                            label: 'Last Month',
+                            data: {{ last_month_data|safe }},
+                            borderColor: '#6c757d',
+                            backgroundColor: 'rgba(108, 117, 125, 0.1)',
+                            borderWidth: 2,
+                            pointBackgroundColor: '#6c757d',
+                            pointBorderColor: '#fff',
+                            pointBorderWidth: 2,
+                            pointRadius: 4,
+                            tension: 0.3,
+                            fill: true
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { 
+                            position: 'top',
+                            labels: { boxWidth: 12, padding: 15 }
+                        }
+                    },
+                    scales: {
+                        y: { 
+                            beginAtZero: true,
+                            grid: { color: 'rgba(0,0,0,0.05)' },
+                            ticks: { stepSize: 1 }
+                        },
+                        x: { grid: { display: false } }
+                    }
+                }
+            });
+        }
+        
+        // Daily Bookings Chart
+        const dailyBookingsCtx = document.getElementById('dailyBookingsChart');
+        if (dailyBookingsCtx) {
+            new Chart(dailyBookingsCtx.getContext('2d'), {
+                type: 'bar',
+                data: {
+                    labels: {{ daily_bookings_labels|safe }},
+                    datasets: [{
+                        label: 'Bookings',
+                        data: {{ daily_bookings_data|safe }},
+                        backgroundColor: '#a86ba3',
+                        borderRadius: 5,
+                        barPercentage: 0.7,
+                        categoryPercentage: 0.9
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: {
+                            callbacks: {
+                                label: function(context) {
+                                    return context.raw + ' bookings';
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: { 
+                            beginAtZero: true,
+                            grid: { color: 'rgba(0,0,0,0.05)' },
+                            ticks: { stepSize: 1 }
+                        },
+                        x: { 
+                            grid: { display: false },
+                            ticks: { maxRotation: 45, minRotation: 45 }
+                        }
+                    }
+                }
+            });
+        }
+    });
+    
+    // Date range filter
+    function setDateRange(range) {
+        // Update active button
+        document.querySelectorAll('.btn-outline-primary').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        event.target.classList.add('active');
+        
+        // In a real app, you would reload the page with new date range
+        console.log('Date range changed to:', range);
+        // window.location.href = `?range=${range}`;
+    }
+</script>
+{% endblock %}

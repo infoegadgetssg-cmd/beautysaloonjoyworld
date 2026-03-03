@@ -1,0 +1,227 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Order Confirmed | Joy World Beauty Shop{% endblock %}
+
+{% block extra_css %}
+<style>
+    .success-page {
+        padding: 100px 0;
+        background: linear-gradient(135deg, #f6f0ff, #ffffff);
+        min-height: 80vh;
+        display: flex;
+        align-items: center;
+    }
+    
+    .success-card {
+        background: white;
+        border-radius: 20px;
+        padding: 50px;
+        text-align: center;
+        box-shadow: 0 20px 60px rgba(0,0,0,0.1);
+        max-width: 700px;
+        margin: 0 auto;
+    }
+    
+    .success-icon {
+        font-size: 5rem;
+        color: #4caf50;
+        margin-bottom: 30px;
+        animation: bounce 1s ease infinite;
+    }
+    
+    @keyframes bounce {
+        0%, 100% { transform: translateY(0); }
+        50% { transform: translateY(-20px); }
+    }
+    
+    .order-details {
+        background: #f8f9fa;
+        border-radius: 15px;
+        padding: 30px;
+        margin: 30px 0;
+    }
+    
+    .detail-item {
+        display: flex;
+        justify-content: space-between;
+        padding: 10px 0;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .detail-item:last-child {
+        border-bottom: none;
+    }
+    
+    .whats-next {
+        background: var(--primary-light);
+        border-radius: 15px;
+        padding: 25px;
+        margin-top: 30px;
+    }
+    
+    .timeline {
+        display: flex;
+        justify-content: space-between;
+        position: relative;
+        margin-top: 30px;
+    }
+    
+    .timeline:before {
+        content: '';
+        position: absolute;
+        top: 20px;
+        left: 0;
+        right: 0;
+        height: 3px;
+        background: var(--primary-medium);
+        z-index: 1;
+    }
+    
+    .timeline-step {
+        text-align: center;
+        position: relative;
+        z-index: 2;
+    }
+    
+    .step-icon {
+        width: 40px;
+        height: 40px;
+        background: white;
+        border: 3px solid var(--primary-medium);
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 10px;
+        font-weight: bold;
+    }
+    
+    @media (max-width: 768px) {
+        .success-card {
+            padding: 30px 20px;
+        }
+        
+        .timeline {
+            flex-direction: column;
+            gap: 20px;
+        }
+        
+        .timeline:before {
+            display: none;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="success-page">
+    <div class="container">
+        <div class="success-card" data-aos="zoom-in">
+            <div class="success-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            
+            <h1 class="mb-3">Order Confirmed!</h1>
+            <p class="lead text-muted mb-4">
+                Thank you for your order, {{ user.first_name|default:"Valued Customer" }}! 
+                Your order has been successfully placed.
+            </p>
+            
+            <div class="order-details" data-aos="fade-up">
+                <div class="detail-item">
+                    <strong>Order Number:</strong>
+                    <span class="text-primary fw-bold">#{{ order.id|stringformat:"06d" }}</span>
+                </div>
+                <div class="detail-item">
+                    <strong>Order Date:</strong>
+                    <span>{{ order.created_at|date:"F d, Y" }}</span>
+                </div>
+                <div class="detail-item">
+                    <strong>Total Amount:</strong>
+                    <span class="fw-bold">£{{ order.total_amount }}</span>
+                </div>
+                <div class="detail-item">
+                    <strong>Payment Method:</strong>
+                    <span>{{ order.payment_method|title }}</span>
+                </div>
+                <div class="detail-item">
+                    <strong>Status:</strong>
+                    <span class="badge bg-primary">{{ order.get_status_display }}</span>
+                </div>
+            </div>
+            
+            <div class="whats-next" data-aos="fade-up" data-aos-delay="100">
+                <h4 class="mb-4"><i class="fas fa-info-circle me-2"></i>What happens next?</h4>
+                
+                <div class="timeline">
+                    <div class="timeline-step">
+                        <div class="step-icon">
+                            <i class="fas fa-receipt"></i>
+                        </div>
+                        <div class="step-text">
+                            <strong>Order Confirmed</strong>
+                            <p class="small mb-0">We've received your order</p>
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-step">
+                        <div class="step-icon">
+                            <i class="fas fa-box"></i>
+                        </div>
+                        <div class="step-text">
+                            <strong>Processing</strong>
+                            <p class="small mb-0">Preparing your items</p>
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-step">
+                        <div class="step-icon">
+                            <i class="fas fa-shipping-fast"></i>
+                        </div>
+                        <div class="step-text">
+                            <strong>Shipping</strong>
+                            <p class="small mb-0">On its way to you</p>
+                        </div>
+                    </div>
+                    
+                    <div class="timeline-step">
+                        <div class="step-icon">
+                            <i class="fas fa-home"></i>
+                        </div>
+                        <div class="step-text">
+                            <strong>Delivered</strong>
+                            <p class="small mb-0">Arrives at your door</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="mt-5" data-aos="fade-up" data-aos-delay="200">
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <a href="{% url 'shop:shop' %}" class="btn btn-outline-primary w-100">
+                            <i class="fas fa-shopping-bag me-2"></i>Continue Shopping
+                        </a>
+                    </div>
+                    <div class="col-md-4">
+                        <a href="{% url 'shop:order_history' %}" class="btn btn-primary w-100">
+                            <i class="fas fa-history me-2"></i>View Order History
+                        </a>
+                    </div>
+                    <div class="col-md-4">
+                        <a href="{% url 'user_dashboard:dashboard' %}" class="btn btn-outline-dark w-100">
+                            <i class="fas fa-user-circle me-2"></i>My Account
+                        </a>
+                    </div>
+                </div>
+            </div>
+            
+            <p class="text-muted small mt-4 mb-0">
+                <i class="fas fa-envelope me-1"></i>
+                A confirmation email has been sent to <strong>{{ user.email }}</strong>
+            </p>
+        </div>
+    </div>
+</div>
+{% endblock %}

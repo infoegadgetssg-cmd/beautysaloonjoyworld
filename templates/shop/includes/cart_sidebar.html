@@ -1,0 +1,233 @@
+<div class="cart-sidebar" id="cart-sidebar">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h4>
+            <i class="fas fa-shopping-cart me-2"></i>Your Cart
+            <small class="text-muted" id="cart-item-count">({{ cart_items_count|default:0 }})</small>
+        </h4>
+        <button class="btn-close" id="close-cart"></button>
+    </div>
+    
+    <div id="cart-sidebar-items">
+        {% if cart_items_count > 0 %}
+            {% for item in cart.items.all %}
+            <div class="cart-item" data-item-id="{{ item.id }}">
+                <img src="{{ item.product.get_main_image_url }}" 
+                     alt="{{ item.product.name }}" 
+                     class="cart-item-img">
+                <div class="flex-grow-1">
+                    <h6 class="mb-1">{{ item.product.name|truncatechars:30 }}</h6>
+                    <p class="mb-2">£{{ item.product.price }} × {{ item.quantity }}</p>
+                    <div class="d-flex align-items-center">
+                        <button class="btn btn-sm btn-outline-secondary decrease-qty-sidebar" 
+                                data-item-id="{{ item.id }}">
+                            <i class="fas fa-minus"></i>
+                        </button>
+                        <span class="mx-2">{{ item.quantity }}</span>
+                        <button class="btn btn-sm btn-outline-secondary increase-qty-sidebar" 
+                                data-item-id="{{ item.id }}">
+                            <i class="fas fa-plus"></i>
+                        </button>
+                        <button class="btn btn-sm btn-outline-danger ms-2 remove-item-sidebar" 
+                                data-item-id="{{ item.id }}">
+                            <i class="fas fa-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <div class="text-center py-4">
+                <i class="fas fa-shopping-cart fa-3x text-muted mb-3"></i>
+                <p class="text-muted">Your cart is empty</p>
+                <a href="{% url 'shop:shop' %}" class="btn btn-primary btn-sm">
+                    <i class="fas fa-shopping-bag me-1"></i>Start Shopping
+                </a>
+            </div>
+        {% endif %}
+    </div>
+    
+    {% if cart_items_count > 0 %}
+    <div class="cart-total mt-4 pt-4 border-top">
+        <div class="d-flex justify-content-between mb-3">
+            <strong>Subtotal:</strong>
+            <strong id="cart-sidebar-subtotal">£{{ cart.subtotal|default:"0.00" }}</strong>
+        </div>
+        <div class="d-grid gap-2">
+            <a href="{% url 'shop:cart_view' %}" class="btn btn-primary">
+                <i class="fas fa-eye me-2"></i>View Cart
+            </a>
+            <a href="{% url 'shop:checkout' %}" class="btn btn-success">
+                <i class="fas fa-lock me-2"></i>Checkout
+            </a>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<script>
+// Cart sidebar functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const cartSidebar = document.getElementById('cart-sidebar');
+    const cartOverlay = document.getElementById('cart-overlay');
+    const closeCartBtn = document.getElementById('close-cart');
+    const cartIcon = document.querySelector('[data-cart-icon]') || document.getElementById('cart-icon');
+    
+    // Open cart sidebar
+    if (cartIcon) {
+        cartIcon.addEventListener('click', function(e) {
+            e.preventDefault();
+            openCartSidebar();
+        });
+    }
+    
+    // Close cart sidebar
+    if (closeCartBtn) {
+        closeCartBtn.addEventListener('click', closeCartSidebar);
+    }
+    
+    if (cartOverlay) {
+        cartOverlay.addEventListener('click', closeCartSidebar);
+    }
+    
+    // Quantity controls in sidebar
+    document.querySelectorAll('.increase-qty-sidebar').forEach(btn => {
+        btn.addEventListener('click', function() {
+            updateCartQuantity(this.dataset.itemId, 'increase');
+        });
+    });
+    
+    document.querySelectorAll('.decrease-qty-sidebar').forEach(btn => {
+        btn.addEventListener('click', function() {
+            updateCartQuantity(this.dataset.itemId, 'decrease');
+        });
+    });
+    
+    document.querySelectorAll('.remove-item-sidebar').forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (confirm('Remove this item from cart?')) {
+                removeCartItem(this.dataset.itemId);
+            }
+        });
+    });
+    
+    function openCartSidebar() {
+        cartSidebar.classList.add('open');
+        cartOverlay.classList.add('show');
+        document.body.style.overflow = 'hidden';
+    }
+    
+    function closeCartSidebar() {
+        cartSidebar.classList.remove('open');
+        cartOverlay.classList.remove('show');
+        document.body.style.overflow = '';
+    }
+    
+    function updateCartQuantity(itemId, action) {
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const currentQty = parseInt(document.querySelector(`[data-item-id="${itemId}"] .mx-2`).textContent);
+        let newQty = currentQty;
+        
+        if (action === 'increase') {
+            newQty = currentQty + 1;
+        } else if (action === 'decrease' && currentQty > 1) {
+            newQty = currentQty - 1;
+        } else {
+            return;
+        }
+        
+        fetch('{% url "shop:update_cart_quantity" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                item_id: itemId,
+                quantity: newQty
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update quantity in sidebar
+                const qtySpan = document.querySelector(`[data-item-id="${itemId}"] .mx-2`);
+                qtySpan.textContent = newQty;
+                
+                // Update cart counts
+                document.getElementById('cart-item-count').textContent = `(${data.cart_items_count})`;
+                document.getElementById('cart-sidebar-subtotal').textContent = `£${data.cart_subtotal.toFixed(2)}`;
+                
+                // Update navbar cart count
+                const cartCount = document.querySelector('.cart-count');
+                if (cartCount) {
+                    cartCount.textContent = data.cart_items_count;
+                }
+            } else {
+                showNotification(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('An error occurred.', 'error');
+        });
+    }
+    
+    function removeCartItem(itemId) {
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        
+        fetch(`{% url "shop:remove_from_cart" 0 %}${itemId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Remove item from sidebar
+                const itemElement = document.querySelector(`[data-item-id="${itemId}"]`);
+                if (itemElement) {
+                    itemElement.remove();
+                }
+                
+                // Update cart counts
+                document.getElementById('cart-item-count').textContent = `(${data.cart_items_count})`;
+                document.getElementById('cart-sidebar-subtotal').textContent = `£${data.cart_subtotal.toFixed(2)}`;
+                
+                // Update navbar cart count
+                const cartCount = document.querySelector('.cart-count');
+                if (cartCount) {
+                    cartCount.textContent = data.cart_items_count;
+                }
+                
+                // If cart is empty, show empty message
+                if (data.cart_items_count === 0) {
+                    const cartItemsContainer = document.getElementById('cart-sidebar-items');
+                    cartItemsContainer.innerHTML = `
+                        <div class="text-center py-4">
+                            <i class="fas fa-shopping-cart fa-3x text-muted mb-3"></i>
+                            <p class="text-muted">Your cart is empty</p>
+                            <a href="{% url 'shop:shop' %}" class="btn btn-primary btn-sm">
+                                <i class="fas fa-shopping-bag me-1"></i>Start Shopping
+                            </a>
+                        </div>
+                    `;
+                }
+                
+                showNotification('Item removed from cart.', 'success');
+            } else {
+                showNotification(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('An error occurred.', 'error');
+        });
+    }
+    
+    function showNotification(message, type = 'success') {
+        // Implementation for showing notifications
+        console.log(`${type}: ${message}`);
+    }
+});
+</script>

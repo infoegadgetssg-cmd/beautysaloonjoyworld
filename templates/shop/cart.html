@@ -1,0 +1,396 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Your Shopping Cart | Joy World Beauty Shop{% endblock %}
+
+{% block extra_css %}
+<style>
+    .cart-page {
+        padding: 80px 0;
+        background-color: #f9f9f9;
+    }
+    
+    .cart-header {
+        background: linear-gradient(135deg, var(--primary-dark), var(--primary-medium));
+        color: white;
+        border-radius: 15px;
+        padding: 25px;
+        margin-bottom: 30px;
+    }
+    
+    .cart-item-card {
+        background: white;
+        border-radius: 15px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        transition: var(--transition);
+    }
+    
+    .cart-item-card:hover {
+        box-shadow: 0 8px 25px rgba(0,0,0,0.1);
+    }
+    
+    .cart-item-image {
+        width: 120px;
+        height: 120px;
+        object-fit: cover;
+        border-radius: 10px;
+    }
+    
+    .quantity-controls {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    
+    .quantity-btn {
+        width: 35px;
+        height: 35px;
+        border-radius: 50%;
+        border: 1px solid #ddd;
+        background: white;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+    
+    .quantity-btn:hover {
+        background: var(--primary-light);
+        border-color: var(--primary-medium);
+    }
+    
+    .quantity-input {
+        width: 60px;
+        text-align: center;
+        border: 1px solid #ddd;
+        border-radius: 8px;
+        padding: 8px;
+    }
+    
+    .remove-item-btn {
+        color: #dc3545;
+        background: none;
+        border: none;
+        padding: 5px;
+        cursor: pointer;
+        transition: var(--transition);
+    }
+    
+    .remove-item-btn:hover {
+        color: #c82333;
+        transform: scale(1.1);
+    }
+    
+    .cart-summary {
+        background: white;
+        border-radius: 15px;
+        padding: 30px;
+        box-shadow: 0 5px 15px rgba(0,0,0,0.05);
+        position: sticky;
+        top: 100px;
+    }
+    
+    .summary-row {
+        display: flex;
+        justify-content: space-between;
+        padding: 12px 0;
+        border-bottom: 1px solid #eee;
+    }
+    
+    .summary-row.total {
+        font-size: 1.3rem;
+        font-weight: 600;
+        color: var(--primary-dark);
+        border-bottom: none;
+        padding-top: 20px;
+    }
+    
+    .empty-cart {
+        text-align: center;
+        padding: 80px 20px;
+    }
+    
+    .empty-cart i {
+        font-size: 4rem;
+        color: var(--primary-medium);
+        margin-bottom: 20px;
+    }
+    
+    @media (max-width: 768px) {
+        .cart-item-image {
+            width: 80px;
+            height: 80px;
+        }
+        
+        .cart-item-card {
+            padding: 15px;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="cart-page">
+    <div class="container">
+        <div class="cart-header" data-aos="fade-down">
+            <h1><i class="fas fa-shopping-cart me-3"></i>Your Shopping Cart</h1>
+            <p class="mb-0">Review your items before checkout</p>
+        </div>
+
+        {% if cart and cart.items.exists %}
+        <div class="row">
+            <div class="col-lg-8">
+                <div class="cart-items" id="cartItems">
+                    {% for item in cart.items.all %}
+                    <div class="cart-item-card" data-item-id="{{ item.id }}">
+                        <div class="row align-items-center">
+                            <div class="col-md-2 col-4">
+                                <img src="{{ item.product.get_main_image_url }}" 
+                                     alt="{{ item.product.name }}" 
+                                     class="cart-item-image">
+                            </div>
+                            <div class="col-md-4 col-8">
+                                <h5 class="mb-2">{{ item.product.name }}</h5>
+                                <p class="text-muted mb-2">{{ item.product.category.name }}</p>
+                                <p class="mb-0 fw-bold">£{{ item.product.price }}</p>
+                            </div>
+                            <div class="col-md-3 col-6 mt-3 mt-md-0">
+                                <div class="quantity-controls">
+                                    <button class="quantity-btn decrease-qty" 
+                                            data-item-id="{{ item.id }}">
+                                        <i class="fas fa-minus"></i>
+                                    </button>
+                                    <input type="number" 
+                                           class="quantity-input" 
+                                           value="{{ item.quantity }}" 
+                                           min="1" 
+                                           data-item-id="{{ item.id }}">
+                                    <button class="quantity-btn increase-qty" 
+                                            data-item-id="{{ item.id }}">
+                                        <i class="fas fa-plus"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="col-md-2 col-4 mt-3 mt-md-0 text-center">
+                                <h5 class="item-total">£{{ item.total_price }}</h5>
+                            </div>
+                            <div class="col-md-1 col-2 mt-3 mt-md-0 text-end">
+                                <button class="remove-item-btn" 
+                                        data-item-id="{{ item.id }}">
+                                    <i class="fas fa-trash"></i>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+            
+            <div class="col-lg-4 mt-4 mt-lg-0">
+                <div class="cart-summary" data-aos="fade-left">
+                    <h4 class="mb-4">Order Summary</h4>
+                    
+                    <div class="summary-row">
+                        <span>Subtotal</span>
+                        <span id="cartSubtotal">£{{ cart.subtotal }}</span>
+                    </div>
+                    
+                    <div class="summary-row">
+                        <span>Shipping</span>
+                        <span>Calculated at checkout</span>
+                    </div>
+                    
+                    <div class="summary-row">
+                        <span>Estimated Tax</span>
+                        <span>£0.00</span>
+                    </div>
+                    
+                    <div class="summary-row total">
+                        <span>Total</span>
+                        <span id="cartTotal">£{{ cart.subtotal }}</span>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <a href="{% url 'shop:checkout' %}" class="btn btn-primary btn-lg w-100 mb-3">
+                            <i class="fas fa-lock me-2"></i>Proceed to Checkout
+                        </a>
+                        <a href="{% url 'shop:shop' %}" class="btn btn-outline-primary w-100">
+                            <i class="fas fa-arrow-left me-2"></i>Continue Shopping
+                        </a>
+                    </div>
+                    
+                    <div class="mt-4">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="acceptTerms" checked>
+                            <label class="form-check-label" for="acceptTerms">
+                                I agree to the <a href="#">terms and conditions</a>
+                            </label>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% else %}
+        <div class="empty-cart" data-aos="fade-up">
+            <i class="fas fa-shopping-cart"></i>
+            <h3>Your cart is empty</h3>
+            <p class="text-muted mb-4">Looks like you haven't added any items to your cart yet.</p>
+            <a href="{% url 'shop:shop' %}" class="btn btn-primary btn-lg">
+                <i class="fas fa-shopping-bag me-2"></i>Start Shopping
+            </a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    AOS.init({ duration: 800 });
+    
+    // Update quantity
+    document.querySelectorAll('.quantity-input').forEach(input => {
+        input.addEventListener('change', function() {
+            updateCartQuantity(this.dataset.itemId, this.value);
+        });
+    });
+    
+    // Increase quantity
+    document.querySelectorAll('.increase-qty').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const input = document.querySelector(`input[data-item-id="${this.dataset.itemId}"]`);
+            input.value = parseInt(input.value) + 1;
+            updateCartQuantity(this.dataset.itemId, input.value);
+        });
+    });
+    
+    // Decrease quantity
+    document.querySelectorAll('.decrease-qty').forEach(btn => {
+        btn.addEventListener('click', function() {
+            const input = document.querySelector(`input[data-item-id="${this.dataset.itemId}"]`);
+            if (parseInt(input.value) > 1) {
+                input.value = parseInt(input.value) - 1;
+                updateCartQuantity(this.dataset.itemId, input.value);
+            }
+        });
+    });
+    
+    // Remove item
+    document.querySelectorAll('.remove-item-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            if (confirm('Are you sure you want to remove this item?')) {
+                removeCartItem(this.dataset.itemId);
+            }
+        });
+    });
+    
+    function updateCartQuantity(itemId, quantity) {
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        
+        fetch('{% url "shop:update_cart_quantity" %}', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': csrfToken
+            },
+            body: JSON.stringify({
+                item_id: itemId,
+                quantity: parseInt(quantity)
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Update item total
+                const itemCard = document.querySelector(`[data-item-id="${itemId}"]`);
+                const itemTotal = itemCard.querySelector('.item-total');
+                itemTotal.textContent = `£${data.item_total.toFixed(2)}`;
+                
+                // Update cart totals
+                document.getElementById('cartSubtotal').textContent = `£${data.cart_subtotal.toFixed(2)}`;
+                document.getElementById('cartTotal').textContent = `£${data.cart_subtotal.toFixed(2)}`;
+                
+                // Update cart count in navbar
+                const cartCount = document.querySelector('.cart-count');
+                if (cartCount) {
+                    cartCount.textContent = data.cart_items_count;
+                }
+                
+                showNotification('Cart updated successfully!', 'success');
+            } else {
+                showNotification(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('An error occurred. Please try again.', 'error');
+        });
+    }
+    
+    function removeCartItem(itemId) {
+        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        
+        fetch(`{% url "shop:remove_from_cart" 0 %}${itemId}/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Remove item from DOM
+                const itemCard = document.querySelector(`[data-item-id="${itemId}"]`);
+                itemCard.remove();
+                
+                // Update cart totals
+                document.getElementById('cartSubtotal').textContent = `£${data.cart_subtotal.toFixed(2)}`;
+                document.getElementById('cartTotal').textContent = `£${data.cart_subtotal.toFixed(2)}`;
+                
+                // Update cart count in navbar
+                const cartCount = document.querySelector('.cart-count');
+                if (cartCount) {
+                    cartCount.textContent = data.cart_items_count;
+                }
+                
+                // If cart is empty, show empty state
+                if (data.cart_items_count === 0) {
+                    location.reload();
+                }
+                
+                showNotification('Item removed from cart.', 'success');
+            } else {
+                showNotification(data.message, 'error');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showNotification('An error occurred. Please try again.', 'error');
+        });
+    }
+    
+    function showNotification(message, type = 'success') {
+        const notification = document.createElement('div');
+        notification.className = `alert alert-${type === 'error' ? 'danger' : 'success'} position-fixed`;
+        notification.style.top = '100px';
+        notification.style.right = '20px';
+        notification.style.zIndex = '1060';
+        notification.innerHTML = `
+            <i class="fas fa-${type === 'error' ? 'exclamation-circle' : 'check-circle'} me-2"></i> ${message}
+        `;
+
+        document.body.appendChild(notification);
+
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            notification.style.transform = 'translateX(100px)';
+            setTimeout(() => notification.remove(), 300);
+        }, 3000);
+    }
+});
+</script>
+{% endblock %}

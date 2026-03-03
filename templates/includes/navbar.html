@@ -1,0 +1,97 @@
+<!-- templates/includes/navbar.html -->
+<nav class="navbar navbar-expand-lg navbar-light fixed-top">
+  <div class="container">
+    <a class="navbar-brand" href="{% url 'index' %}">
+      <i class="fas fa-spa me-2"></i>Joy World
+    </a>
+
+    <!-- User greeting for mobile -->
+    <div class="d-lg-none user-greeting-mobile ms-auto me-3">
+      {% if user.is_authenticated %}
+        <span class="text-secondary fw-bold">Hi, {{ user.first_name|default:user.username }}!</span>
+      {% endif %}
+    </div>
+
+    <button
+      class="navbar-toggler"
+      type="button"
+      data-bs-toggle="collapse"
+      data-bs-target="#navbarNav"
+    >
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNav">
+      <ul class="navbar-nav ms-auto">
+        <li class="nav-item">
+          <a class="nav-link {% if request.path == '/' %}active{% endif %}" href="{% url 'index' %}">Home</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if 'services' in request.path %}active{% endif %}" href="{% url 'services:services_list' %}">Services</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if 'booking' in request.path %}active{% endif %}" href="{% url 'booking:booking' %}">
+            Book Now
+          </a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if 'shop' in request.path %}active{% endif %}" href="{% url 'shop:shop' %}">Shop</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if 'gallery' in request.path %}active{% endif %}" href="{% url 'gallery:gallery' %}">Gallery</a>
+        </li>
+        <li class="nav-item">
+          <a class="nav-link {% if 'contact' in request.path %}active{% endif %}" href="{% url 'contact:contact' %}">Contact</a>
+        </li>
+        
+        <!-- Authentication Links -->
+        {% if user.is_authenticated %}
+          <!-- Logged-in user links -->
+          {% if user.is_staff %}
+            <!-- Staff/admin: Show admin dashboard -->
+            <li class="nav-item">
+              <a class="nav-link" href="{% url 'admin_dashboard:index' %}">
+                <i class="fas fa-tachometer-alt me-2"></i>Admin
+              </a>
+            </li>
+          {% else %}
+            <!-- Regular customer: Show user dashboard -->
+            <li class="nav-item">
+              <a class="nav-link {% if 'my-account' in request.path %}active{% endif %}" 
+                 href="{% url 'user_dashboard:dashboard' %}">
+                <i class="fas fa-user-circle me-2"></i>My Account
+              </a>
+            </li>
+          {% endif %}
+          
+          <!-- Logout link using POST -->
+            
+            <li class="nav-item">
+                <a class="nav-link" href="#" data-bs-toggle="modal" data-bs-target="#logoutModal">
+                    <i class="fas fa-sign-out-alt me-2"></i>Logout
+                </a>
+            </li>
+            {% else %}
+          <!-- Not logged in: Show login/register -->
+          <li class="nav-item">
+            <a class="nav-link {% if 'login' in request.path %}active{% endif %}" href="{% url 'account_login' %}">
+              <i class="fas fa-sign-in-alt me-2"></i>Login
+            </a>
+          </li>
+          <li class="nav-item">
+            <a class="nav-link btn btn-outline-primary ms-2" href="{% url 'account_signup' %}">
+              Sign Up
+            </a>
+          </li>
+        {% endif %}
+        
+        <!-- Shopping cart (always visible) -->
+        <li class="nav-item">
+          <a class="nav-link" href="#" id="cart-icon">
+            <i class="fas fa-shopping-cart"></i>
+            <span class="cart-count">0</span>
+          </a>
+        </li>
+      </ul>
+    </div>
+  </div>
+</nav>

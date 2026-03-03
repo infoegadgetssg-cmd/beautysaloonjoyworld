@@ -1,0 +1,22 @@
+[
+    {
+        "model": "contact.salonlocation",
+        "pk": 1,
+        "fields": {
+            "name": "Joy World Home of Beauty",
+            "address": "123 Beauty Street\nManchester M1 1AB\nUnited Kingdom",
+            "phone": "+44 161 123 4567",
+            "email": "info@joyworldbeauty.com",
+            "facebook_url": "https://facebook.com/joyworldbeauty",
+            "instagram_url": "https://instagram.com/joyworldbeauty",
+            "twitter_url": "https://twitter.com/joyworldbeauty",
+            "pinterest_url": "https://pinterest.com/joyworldbeauty",
+            "latitude": "53.480372",
+            "longitude": "-2.242722",
+            "google_maps_embed_url": "https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2374.437839120938!2d-2.242722123025946!3d53.48037207232278!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x487bb1c16ecb7dd7%3A0x3f10e98ed6358d2e!2sManchester%2C%20UK!5e0!3m2!1sen!2sus!4v1681234567890!5m2!1sen!2sus",
+            "is_active": true,
+            "created_at": "2024-01-01T00:00:00Z",
+            "updated_at": "2024-01-01T00:00:00Z"
+        }
+    }
+]
