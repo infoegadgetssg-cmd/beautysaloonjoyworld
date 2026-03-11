@@ -2,33 +2,33 @@
     <div class="d-flex justify-content-between align-items-center mb-4">
         <h4>
             <i class="fas fa-shopping-cart me-2"></i>Your Cart
-            <small class="text-muted" id="cart-item-count">({{ cart_items_count|default:0 }})</small>
+            <small class="text-muted" id="cart-item-count">({{ cart_session_count|default:cart_items_count|default:0 }})</small>
         </h4>
         <button class="btn-close" id="close-cart"></button>
     </div>
     
     <div id="cart-sidebar-items">
-        {% if cart_items_count > 0 %}
-            {% for item in cart.items.all %}
-            <div class="cart-item" data-item-id="{{ item.id }}">
-                <img src="{{ item.product.get_main_image_url }}" 
-                     alt="{{ item.product.name }}" 
+        {% if cart_items %}
+            {% for id, item in cart_items.items %}
+            <div class="cart-item" data-item-id="{{ item.cart_item_id|default:id }}">
+                <img src="{{ item.image }}" 
+                     alt="{{ item.name }}" 
                      class="cart-item-img">
                 <div class="flex-grow-1">
-                    <h6 class="mb-1">{{ item.product.name|truncatechars:30 }}</h6>
-                    <p class="mb-2">£{{ item.product.price }} × {{ item.quantity }}</p>
+                    <h6 class="mb-1">{{ item.name|truncatechars:30 }}</h6>
+                    <p class="mb-2">&pound;{{ item.price }} x {{ item.quantity }}</p>
                     <div class="d-flex align-items-center">
                         <button class="btn btn-sm btn-outline-secondary decrease-qty-sidebar" 
-                                data-item-id="{{ item.id }}">
+                                data-item-id="{{ item.cart_item_id|default:id }}">
                             <i class="fas fa-minus"></i>
                         </button>
                         <span class="mx-2">{{ item.quantity }}</span>
                         <button class="btn btn-sm btn-outline-secondary increase-qty-sidebar" 
-                                data-item-id="{{ item.id }}">
+                                data-item-id="{{ item.cart_item_id|default:id }}">
                             <i class="fas fa-plus"></i>
                         </button>
                         <button class="btn btn-sm btn-outline-danger ms-2 remove-item-sidebar" 
-                                data-item-id="{{ item.id }}">
+                                data-item-id="{{ item.cart_item_id|default:id }}">
                             <i class="fas fa-trash"></i>
                         </button>
                     </div>
@@ -46,11 +46,11 @@
         {% endif %}
     </div>
     
-    {% if cart_items_count > 0 %}
+    {% if cart_items %}
     <div class="cart-total mt-4 pt-4 border-top">
         <div class="d-flex justify-content-between mb-3">
             <strong>Subtotal:</strong>
-            <strong id="cart-sidebar-subtotal">£{{ cart.subtotal|default:"0.00" }}</strong>
+            <strong id="cart-sidebar-subtotal">&pound;{{ cart_total|default:"0.00" }}</strong>
         </div>
         <div class="d-grid gap-2">
             <a href="{% url 'shop:cart_view' %}" class="btn btn-primary">
@@ -155,7 +155,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Update cart counts
                 document.getElementById('cart-item-count').textContent = `(${data.cart_items_count})`;
-                document.getElementById('cart-sidebar-subtotal').textContent = `£${data.cart_subtotal.toFixed(2)}`;
+                document.getElementById('cart-sidebar-subtotal').textContent = `\u00A3${data.cart_subtotal.toFixed(2)}`;
                 
                 // Update navbar cart count
                 const cartCount = document.querySelector('.cart-count');
@@ -192,7 +192,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 
                 // Update cart counts
                 document.getElementById('cart-item-count').textContent = `(${data.cart_items_count})`;
-                document.getElementById('cart-sidebar-subtotal').textContent = `£${data.cart_subtotal.toFixed(2)}`;
+                document.getElementById('cart-sidebar-subtotal').textContent = `\u00A3${data.cart_subtotal.toFixed(2)}`;
                 
                 // Update navbar cart count
                 const cartCount = document.querySelector('.cart-count');

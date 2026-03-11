@@ -9,8 +9,10 @@
 <style>
     /* Shop-specific styles from original shop.html */
     .page-header {
-        background: linear-gradient(rgba(168, 107, 163, 0.8), rgba(168, 107, 163, 0.8)),
-                    url("{% static 'images/shop-header.jpg' %}") center/cover no-repeat;
+        background: linear-gradient(rgba(168, 107, 163, 0.8), rgba(168, 107, 163, 0.8));
+        background-position: center;
+        background-size: cover;
+        background-repeat: no-repeat;
         padding: 120px 0 80px;
         color: var(--white);
         text-align: center;
@@ -460,7 +462,8 @@
 
 {% block content %}
 <!-- Page Header -->
-<section class="page-header">
+{% with hero_image_url=hero_image_url|default:"https://res.cloudinary.com/dlnji0lml/image/upload/v1772736934/Capturejoyworld_image_l1xspb.png" %}
+<section class="page-header" style="background-image: url('{{ hero_image_url }}');">
     <div class="container">
         <h1 data-aos="fade-down" data-aos-delay="100">Beauty Shop</h1>
         <nav aria-label="breadcrumb" data-aos="fade-up" data-aos-delay="200">
@@ -471,6 +474,7 @@
         </nav>
     </div>
 </section>
+{% endwith %}
 
 <!-- Shop Section -->
 <section class="shop-section">
@@ -500,7 +504,7 @@
                                 <select class="form-select" id="categoryFilter" name="category">
                                     <option value="">All Categories</option>
                                     {% for category in categories %}
-                                    <option value="{{ category.slug }}" 
+                                    <option value="{{ category.slug }}" data-category-id="{{ category.id }}"
                                             {% if current_category == category.slug %}selected{% endif %}>
                                         {{ category.name }}
                                     </option>
@@ -664,6 +668,16 @@
             });
         }
 
+        // Dynamic category filtering (mobile + desktop, no refresh)
+        const categoryFilter = document.getElementById('categoryFilter');
+        if (categoryFilter) {
+            categoryFilter.addEventListener('change', function() {
+                const selected = this.options[this.selectedIndex];
+                const categoryId = selected ? selected.dataset.categoryId : '';
+                filterProducts(categoryId || '');
+            });
+        }
+
         // Newsletter form - REMOVE OR COMMENT OUT FOR NOW
         const newsletterForm = document.getElementById('newsletterForm');
         if (newsletterForm) {
@@ -680,13 +694,15 @@
             });
         }
 
-        // Quick view functionality - DISABLE FOR NOW
+        // Quick view functionality
         document.addEventListener('click', function(e) {
             if (e.target.closest('.btn-quick-view')) {
                 e.preventDefault();
-                const productId = e.target.closest('.btn-quick-view').dataset.productId;
-                // loadProductQuickView(productId); // Disable for now
-                alert('Quick view feature coming soon!');
+                const button = e.target.closest('.btn-quick-view');
+                if (button.classList.contains('btn-wishlist')) {
+                    return;
+                }
+                loadProductQuickView(button);
             }
         });
 
@@ -699,7 +715,58 @@
                 addToCart(productId);
             }
         });
+
+        // Wishlist toggle (does not navigate to product details)
+        document.addEventListener('click', function(e) {
+            const wishlistBtn = e.target.closest('.btn-wishlist');
+            if (!wishlistBtn) return;
+            e.preventDefault();
+            e.stopPropagation();
+            toggleWishlist(wishlistBtn);
+        });
     });
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function toggleWishlist(button) {
+        const url = button.dataset.url;
+        if (!url) return;
+
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (!data.success) return;
+            if (data.action === 'added') {
+                showNotification('Added to Favorites', 'success');
+            } else if (data.action === 'removed') {
+                showNotification('Removed from Favorites', 'success');
+            } else {
+                showNotification(data.message || 'Wishlist updated.', 'success');
+            }
+        })
+        .catch(() => {
+            showNotification('Could not update favorites.', 'error');
+        });
+    }
 
     function fetchSuggestions(query) {
         // Check if search_suggestions URL exists
@@ -736,38 +803,120 @@
             });
     }
 
-    function loadProductQuickView(productId) {
-        // This URL doesn't exist yet, disable for now
-        console.log('Quick view not implemented');
-        return;
-        
-        fetch(`/shop/product/quick-view/${productId}/`)
-            .then(response => response.text())
-            .then(html => {
-                document.getElementById('productModalContent').innerHTML = html;
-                const modal = new bootstrap.Modal(document.getElementById('productModal'));
-                modal.show();
+    function filterProducts(categoryId = '') {
+        const productGrid = document.getElementById('productGrid');
+        if (!productGrid) return;
+
+        const url = `{% url 'shop:filter_products' %}${categoryId ? `?category_id=${encodeURIComponent(categoryId)}` : ''}`;
+        fetch(url)
+            .then(response => response.json())
+            .then(data => {
+                const products = data.products || [];
+                if (!products.length) {
+                    productGrid.innerHTML = `
+                        <div class="empty-state">
+                            <i class="fas fa-search"></i>
+                            <h3>No products found</h3>
+                            <p>Try adjusting your filter criteria</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                productGrid.innerHTML = products.map(product => {
+                    const badge = product.is_new
+                        ? '<span class="product-badge badge-new">New</span>'
+                        : (product.is_on_sale ? `<span class="product-badge badge-sale">-${product.discount_percentage}%</span>` : '');
+                    const comparePrice = product.compare_at_price
+                        ? `<small class="text-muted text-decoration-line-through">£${product.compare_at_price.toFixed(2)}</small>`
+                        : '';
+                    const stockState = product.in_stock
+                        ? `<button class="btn btn-primary btn-add-to-cart" data-product-id="${product.id}">
+                            <i class="fas fa-shopping-cart me-1"></i>Add to Cart
+                           </button>`
+                        : `<button class="btn btn-secondary" disabled>Out of Stock</button>`;
+                    const wishlistButton = `{% if user.is_authenticated %}<button type="button" class="btn-quick-view btn-wishlist" data-url="/shop/add-to-wishlist/${product.id}/" title="Toggle Wishlist"><i class="fas fa-heart"></i></button>{% endif %}`;
+
+                    return `
+                        <div class="product-card" data-aos="fade-up">
+                            <div class="position-relative">
+                                ${badge}
+                                <img src="${product.image}" alt="${product.name}" class="product-img">
+                            </div>
+                            <div class="product-content">
+                                <div class="product-category">${product.category}</div>
+                                <h3 class="product-title">${product.name}</h3>
+                                <p class="product-description">${product.description || ''}</p>
+                                <div class="product-price">£${product.price.toFixed(2)} ${comparePrice}</div>
+                                <div class="product-actions">
+                                    ${stockState}
+                                    <button class="btn-quick-view"
+                                        data-product-id="${product.id}"
+                                        data-product-slug="${product.slug || ''}"
+                                        data-product-name="${product.name}"
+                                        data-product-price="${product.price.toFixed(2)}"
+                                        data-product-description="${product.description || ''}"
+                                        data-product-image="${product.image}"
+                                        data-product-category="${product.category}">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    ${wishlistButton}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
             })
             .catch(error => {
-                console.error('Error loading quick view:', error);
+                console.error('Error filtering products:', error);
             });
+    }
+
+    function loadProductQuickView(button) {
+        const productId = button.dataset.productId;
+        const productSlug = button.dataset.productSlug || '';
+        const productName = button.dataset.productName || 'Product';
+        const productPrice = button.dataset.productPrice || '0.00';
+        const productDescription = button.dataset.productDescription || '';
+        const productImage = button.dataset.productImage || '';
+        const productCategory = button.dataset.productCategory || 'Uncategorized';
+        const productUrl = productSlug ? `/shop/product/${productSlug}/` : '#';
+        const detailsButtonState = productSlug ? '' : 'disabled aria-disabled="true"';
+
+        document.getElementById('productModalContent').innerHTML = `
+            <div class="row g-4">
+                <div class="col-md-5">
+                    <img src="${productImage}" alt="${productName}" class="img-fluid rounded">
+                </div>
+                <div class="col-md-7">
+                    <span class="badge bg-light text-dark mb-2">${productCategory}</span>
+                    <h4 class="mb-3">${productName}</h4>
+                    <p class="h5 mb-3">£${productPrice}</p>
+                    <p class="text-muted mb-4">${productDescription}</p>
+                    <div class="d-flex gap-2">
+                        <button class="btn btn-primary btn-add-to-cart" data-product-id="${productId}">
+                            Add to Cart
+                        </button>
+                        <a href="${productUrl}" class="btn btn-outline-primary" ${detailsButtonState}>More Details</a>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        const modal = new bootstrap.Modal(document.getElementById('productModal'));
+        modal.show();
     }
 
     function addToCart(productId, quantity = 1) {
         const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
         const addToCartUrl = '{% url "shop:add_to_cart" %}';
         
-        // Check if URL exists
-        if (!addToCartUrl.includes('add_to_cart')) {
-            alert('Add to cart functionality coming soon!');
-            return;
-        }
-        
         fetch(addToCartUrl, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken
+                'X-CSRFToken': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest'
             },
             body: JSON.stringify({
                 product_id: productId,
@@ -782,14 +931,19 @@
                 if (cartCount) {
                     cartCount.textContent = data.cart_items_count;
                 }
+
+                // Update sidebar summary/count if available
+                const cartItemCount = document.getElementById('cart-item-count');
+                if (cartItemCount) {
+                    cartItemCount.textContent = `(${data.cart_items_count})`;
+                }
+                const cartSubtotal = document.getElementById('cart-sidebar-subtotal');
+                if (cartSubtotal) {
+                    cartSubtotal.textContent = `£${data.cart_subtotal.toFixed(2)}`;
+                }
                 
                 // Show success message
                 showNotification(data.message, 'success');
-                
-                // Open cart sidebar
-                setTimeout(() => {
-                    openCart();
-                }, 500);
             } else {
                 showNotification(data.message, 'error');
             }

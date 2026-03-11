@@ -13,6 +13,22 @@
         box-shadow: 0 2px 5px rgba(0,0,0,0.05);
         transition: transform 0.3s;
         min-height: 200px;
+        width: 100%;
+        max-width: 420px;
+        overflow: hidden;
+    }
+
+    .customer-card-content {
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+        overflow: hidden;
+    }
+
+    .text-wrap-safe {
+        overflow: hidden;
+        word-wrap: break-word;
+        overflow-wrap: anywhere;
     }
     
     .customer-card:hover {
@@ -31,6 +47,7 @@
         color: white;
         font-size: 1.5rem;
         font-weight: 600;
+        flex-shrink: 0;
     }
     
     .customer-tier {
@@ -39,6 +56,7 @@
         font-size: 0.7rem;
         font-weight: 600;
         text-transform: uppercase;
+        margin-left: 8px;
     }
     
     .tier-vip { background: #ffd700; color: #000; }
@@ -54,21 +72,21 @@
     }
 
     @media (max-width: 576px) {
-    .customer-avatar {
-        width: 45px;
-        height: 45px;
-        font-size: 1.2rem;
+        .customer-avatar {
+            width: 45px;
+            height: 45px;
+            font-size: 1.2rem;
+        }
+        
+        .customer-card {
+            padding: 15px;
+        }
+        
+        .stats-badge {
+            font-size: 0.8rem;
+            padding: 4px 8px;
+        }
     }
-    
-    .customer-card {
-        padding: 15px;
-    }
-    
-    .stats-badge {
-        font-size: 0.8rem;
-        padding: 4px 8px;
-    }
-}
 
     @media (min-width: 577px) and (max-width: 768px) {
         .customer-card {
@@ -109,56 +127,58 @@
 <div class="row">
     {% for customer_data in customers_with_stats %}
     {% with customer=customer_data.customer %}
-    <div class="col-12 col-sm-6 col-md-6 col-lg-4 col-xl-3 mb-4">
+    <div class="col-12 col-sm-6 col-md-6 col-lg-4 col-xl-4 mb-4 d-flex justify-content-center">
         <div class="customer-card">
-            <div class="d-flex align-items-start mb-3">
-                <div class="customer-avatar me-3">
-                    {{ customer.first_name|first|upper }}{{ customer.last_name|first|upper }}
-                </div>
-                <div class="flex-grow-1">
-                    <div class="d-flex justify-content-between align-items-start">
-                        <div>
-                            <h6 class="mb-1">{{ customer.get_full_name }}</h6>
-                            <small class="text-muted">{{ customer.email }}</small>
+            <div class="customer-card-content">
+                <div class="d-flex align-items-start mb-3">
+                    <div class="customer-avatar me-3">
+                        {{ customer.first_name|first|upper }}{{ customer.last_name|first|upper }}
+                    </div>
+                    <div class="flex-grow-1 text-wrap-safe">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div class="text-wrap-safe">
+                                <h6 class="mb-1 text-wrap-safe">{{ customer.get_full_name }}</h6>
+                                <small class="text-muted text-wrap-safe d-block">{{ customer.email }}</small>
+                            </div>
+                            <span class="customer-tier tier-{{ customer_data.tier|default:'bronze'|lower }}">
+                                {{ customer_data.tier|default:'Bronze' }}
+                            </span>
                         </div>
-                        <span class="customer-tier tier-{{ customer_data.tier|default:'bronze'|lower }}">
-                            {{ customer_data.tier|default:'Bronze' }}
-                        </span>
-                    </div>
-                    <p class="mb-2">
-                        <i class="fas fa-phone me-2 text-muted"></i>
-                        {{ customer.phone|default:"No phone" }}
-                    </p>
-                </div>
-            </div>
-            
-            <div class="row mb-3">
-                <div class="col-6">
-                    <div class="stats-badge">
-                        <i class="fas fa-calendar-check me-1"></i>
-                        <strong>{{ customer_data.booking_count }}</strong> Bookings
+                        <p class="mb-2 text-wrap-safe">
+                            <i class="fas fa-phone me-2 text-muted"></i>
+                            {{ customer.phone|default:"No phone" }}
+                        </p>
                     </div>
                 </div>
-                <div class="col-6">
-                    <div class="stats-badge">
-                        <i class="fas fa-pound-sign me-1"></i>
-                        <strong>£{{ customer_data.total_spent|floatformat:2 }}</strong> Spent
+                
+                <div class="row mb-3">
+                    <div class="col-6">
+                        <div class="stats-badge text-wrap-safe">
+                            <i class="fas fa-box me-1"></i>
+                            <strong>{{ customer_data.booking_count }}</strong> Orders
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="stats-badge text-wrap-safe">
+                            <i class="fas fa-pound-sign me-1"></i>
+                            <strong>&pound;{{ customer_data.total_spent|floatformat:2 }}</strong> Spent
+                        </div>
                     </div>
                 </div>
-            </div>
-            
-            <div class="d-flex justify-content-between">
-                <small class="text-muted">
-                    <i class="fas fa-calendar-alt me-1"></i>
-                    Joined {{ customer.date_joined|date:"M d, Y" }}
-                </small>
-                <div>
-                    <button class="btn btn-sm btn-outline-primary" onclick="viewCustomerDetails('{{ customer.id }}')">
-                        <i class="fas fa-eye"></i> View
-                    </button>
-                    <a href="mailto:{{ customer.email }}" class="btn btn-sm btn-outline-success">
-                        <i class="fas fa-envelope"></i>
-                    </a>
+                
+                <div class="d-flex justify-content-between">
+                    <small class="text-muted text-wrap-safe">
+                        <i class="fas fa-calendar-alt me-1"></i>
+                        Joined {{ customer.date_joined|date:"M d, Y" }}
+                    </small>
+                    <div>
+                        <a href="{% url 'admin_dashboard:customer_detail' customer.id %}" class="btn btn-sm btn-outline-primary">
+                            <i class="fas fa-eye"></i> View
+                        </a>
+                        <a href="mailto:{{ customer.email }}" class="btn btn-sm btn-outline-success">
+                            <i class="fas fa-envelope"></i>
+                        </a>
+                    </div>
                 </div>
             </div>
         </div>
@@ -177,14 +197,14 @@
 
 <!-- Customer Details Modal -->
 <div class="modal fade" id="customerDetailsModal" tabindex="-1">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Customer Details</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body" id="customerDetailsContent">
-                <!-- Content will be loaded via AJAX -->
+                <!-- Content loaded via AJAX -->
             </div>
         </div>
     </div>
@@ -193,67 +213,93 @@
 
 {% block extra_js %}
 <script>
-    function viewCustomerDetails(customerId) {
-        // This would typically be an AJAX call to fetch customer details
-        const modalContent = `
-            <div class="row">
-                <div class="col-md-4 text-center">
-                    <div class="customer-avatar mx-auto mb-3" style="width: 100px; height: 100px; font-size: 2.5rem;">
-                        JD
-                    </div>
-                    <h5>John Doe</h5>
-                    <span class="badge bg-warning">Gold Tier</span>
-                </div>
-                <div class="col-md-8">
-                    <div class="row mb-3">
-                        <div class="col-6">
-                            <h6>Contact Info</h6>
-                            <p><i class="fas fa-envelope me-2"></i> john@example.com</p>
-                            <p><i class="fas fa-phone me-2"></i> +44 1234 567890</p>
-                            <p><i class="fas fa-calendar-alt me-2"></i> Member since Jan 15, 2023</p>
-                        </div>
-                        <div class="col-6">
-                            <h6>Statistics</h6>
-                            <p><i class="fas fa-calendar-check me-2"></i> 12 Total Bookings</p>
-                            <p><i class="fas fa-pound-sign me-2"></i> £850.00 Total Spent</p>
-                            <p><i class="fas fa-star me-2"></i> Loyalty Points: 1250</p>
-                        </div>
-                    </div>
-                    
-                    <h6 class="mt-4">Recent Bookings</h6>
-                    <div class="list-group">
-                        <div class="list-group-item">
-                            <div class="d-flex justify-content-between">
-                                <div>
-                                    <strong>Hydrating Facial</strong><br>
-                                    <small class="text-muted">Dec 15, 2024 • 2:00 PM</small>
-                                </div>
-                                <div>
-                                    <span class="badge bg-success">Completed</span>
-                                    <div class="text-end mt-1">£60.00</div>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="list-group-item">
-                            <div class="d-flex justify-content-between">
-                                <div>
-                                    <strong>Manicure & Pedicure</strong><br>
-                                    <small class="text-muted">Dec 10, 2024 • 11:00 AM</small>
-                                </div>
-                                <div>
-                                    <span class="badge bg-success">Completed</span>
-                                    <div class="text-end mt-1">£45.00</div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        `;
-        
-        document.getElementById('customerDetailsContent').innerHTML = modalContent;
+    function viewCustomerDetails(button) {
+        const detailsUrl = button.dataset.url;
+        const modalBody = document.getElementById('customerDetailsContent');
+        modalBody.innerHTML = '<div class="text-center py-3">Loading customer details...</div>';
+
         const modal = new bootstrap.Modal(document.getElementById('customerDetailsModal'));
         modal.show();
+
+        fetch(detailsUrl)
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to fetch customer details');
+                }
+                return response.json();
+            })
+            .then(data => {
+                const recentOrders = data.recent_orders.length
+                    ? data.recent_orders.map(order => `
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <strong>Order #${order.id}</strong><br>
+                                    <small class="text-muted">${order.created_at} • ${order.payment_method}</small>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge bg-success text-capitalize">${order.status}</span>
+                                    <div class="mt-1">&pound;${Number(order.total_amount).toFixed(2)}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')
+                    : '<div class="list-group-item text-muted">No recent orders</div>';
+
+                const recentBookings = data.recent_bookings.length
+                    ? data.recent_bookings.map(booking => `
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between">
+                                <div>
+                                    <strong>${booking.service_name}</strong><br>
+                                    <small class="text-muted">${booking.date} • ${booking.time}</small>
+                                </div>
+                                <div class="text-end">
+                                    <span class="badge bg-info text-capitalize">${booking.status}</span>
+                                    <div class="mt-1">&pound;${Number(booking.total_price).toFixed(2)}</div>
+                                </div>
+                            </div>
+                        </div>
+                    `).join('')
+                    : '<div class="list-group-item text-muted">No recent bookings</div>';
+
+                modalBody.innerHTML = `
+                    <div class="row">
+                        <div class="col-md-4 text-center mb-3 mb-md-0">
+                            <div class="customer-avatar mx-auto mb-3" style="width: 100px; height: 100px; font-size: 2.5rem;">
+                                ${data.initials}
+                            </div>
+                            <h5 class="text-wrap-safe">${data.full_name}</h5>
+                        </div>
+                        <div class="col-md-8">
+                            <div class="row mb-3">
+                                <div class="col-12 col-md-6 mb-3 mb-md-0">
+                                    <h6>Contact Info</h6>
+                                    <p class="text-wrap-safe"><i class="fas fa-envelope me-2"></i>${data.email}</p>
+                                    <p class="text-wrap-safe"><i class="fas fa-phone me-2"></i>${data.phone}</p>
+                                    <p><i class="fas fa-calendar-alt me-2"></i>Member since ${data.date_joined}</p>
+                                </div>
+                                <div class="col-12 col-md-6">
+                                    <h6>Statistics</h6>
+                                    <p><i class="fas fa-box me-2"></i>${data.total_orders} Total Orders</p>
+                                    <p><i class="fas fa-calendar-check me-2"></i>${data.total_bookings} Total Bookings</p>
+                                    <p><i class="fas fa-pound-sign me-2"></i>&pound;${Number(data.total_spent).toFixed(2)} Total Spent</p>
+                                    <p><i class="fas fa-star me-2"></i>Loyalty Points: ${data.loyalty_points}</p>
+                                </div>
+                            </div>
+
+                            <h6 class="mt-4">Recent Orders</h6>
+                            <div class="list-group mb-3">${recentOrders}</div>
+
+                            <h6 class="mt-4">Recent Bookings</h6>
+                            <div class="list-group">${recentBookings}</div>
+                        </div>
+                    </div>
+                `;
+            })
+            .catch(() => {
+                modalBody.innerHTML = '<div class="alert alert-danger mb-0">Failed to load customer details.</div>';
+            });
     }
 </script>
 {% endblock %}

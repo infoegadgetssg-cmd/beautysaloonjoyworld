@@ -1,8 +1,9 @@
 # shop/views.py
 from django.shortcuts import render, get_object_or_404, redirect
+from django.conf import settings
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.http import JsonResponse
+from django.http import JsonResponse, HttpResponseForbidden
 from django.db.models import Q, Avg, Count
 from django.core.paginator import Paginator
 from django.views.decorators.http import require_POST
@@ -11,13 +12,62 @@ from django.db import transaction
 from django.db.models import F
 from decimal import Decimal
 import json
+import logging
+import requests
 from django.views.decorators.csrf import csrf_exempt
 from django.urls import reverse
 from .paystack import Paystack
 
-from .models import Product, ProductCategory, ProductReview, Cart, CartItem, Order, OrderItem
+from .models import Product, ProductCategory, ProductReview, Cart, CartItem, Order, OrderItem, Wishlist
 from .forms import ProductReviewForm, CheckoutForm
 from .cart import get_cart_for_request
+from core.notifications import send_order_notifications
+
+logger = logging.getLogger(__name__)
+
+
+def _clear_session_cart(request):
+    request.session["cart"] = {}
+    request.session.modified = True
+
+
+def _reduce_order_stock(order):
+    for item in order.items.select_related('product').all():
+        product = item.product
+        new_stock = (product.stock_quantity or 0) - item.quantity
+        product.stock_quantity = max(0, new_stock)
+        product.save(update_fields=['stock_quantity'])
+
+
+@login_required
+@require_POST
+def toggle_wishlist(request, product_id):
+    product = get_object_or_404(Product, id=product_id, is_active=True)
+    is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+    wishlist_item = Wishlist.objects.filter(user=request.user, product=product).first()
+
+    if wishlist_item:
+        wishlist_item.delete()
+        payload = {
+            "success": True,
+            "action": "removed",
+            "message": "Removed from favorites.",
+        }
+        if is_ajax:
+            return JsonResponse(payload)
+        messages.success(request, payload["message"])
+        return redirect(request.META.get('HTTP_REFERER', 'user_dashboard:favorites'))
+
+    Wishlist.objects.create(user=request.user, product=product)
+    payload = {
+        "success": True,
+        "action": "added",
+        "message": "Added to favorites.",
+    }
+    if is_ajax:
+        return JsonResponse(payload)
+    messages.success(request, payload["message"])
+    return redirect(request.META.get('HTTP_REFERER', 'shop:shop'))
 
 def shop_view(request):
     """Main shop page with product listings"""
@@ -76,7 +126,11 @@ def shop_view(request):
     elif sort_by == 'bestsellers':
         products = products.filter(is_bestseller=True).order_by('-created_at')
     else:  # featured
-        products = products.filter(is_featured=True).order_by('-created_at')
+        featured_products = products.filter(is_featured=True)
+        if featured_products.exists():
+            products = featured_products.order_by('-created_at')
+        else:
+            products = products.order_by('-created_at')
     
     # Get categories for sidebar
     categories = ProductCategory.objects.filter(is_active=True).order_by('name')
@@ -101,6 +155,37 @@ def shop_view(request):
     }
     
     return render(request, 'shop/shop.html', context)
+
+
+def filter_products_view(request):
+    """AJAX endpoint for category-based product filtering."""
+    category_id = request.GET.get('category_id')
+    products = Product.objects.filter(is_active=True).select_related('category').order_by('-created_at')
+
+    if category_id:
+        try:
+            products = products.filter(category_id=int(category_id))
+        except (TypeError, ValueError):
+            products = Product.objects.none()
+
+    data = [
+        {
+            "id": product.id,
+            "name": product.name,
+            "slug": product.slug or "",
+            "price": float(product.price),
+            "description": (product.short_description or product.description or "")[:160],
+            "category": product.category.name if product.category else "Uncategorized",
+            "image": product.get_main_image_url(),
+            "in_stock": product.in_stock,
+            "is_new": product.is_new,
+            "is_on_sale": product.is_on_sale,
+            "discount_percentage": int(product.discount_percentage or 0),
+            "compare_at_price": float(product.compare_at_price) if product.compare_at_price else None,
+        }
+        for product in products
+    ]
+    return JsonResponse({"products": data})
 
 
 def product_detail_view(request, slug):
@@ -163,14 +248,18 @@ def product_detail_view(request, slug):
     return render(request, 'shop/product_detail.html', context)
 
 
-@login_required
 def add_to_cart_view(request):
     """Add product to cart (AJAX endpoint)"""
-    if request.method == 'POST' and request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+    if request.method == 'POST':
         try:
-            data = json.loads(request.body)
-            product_id = data.get('product_id')
-            quantity = int(data.get('quantity', 1))
+            is_ajax = request.headers.get('X-Requested-With') == 'XMLHttpRequest'
+            if is_ajax:
+                data = json.loads(request.body)
+                product_id = data.get('product_id')
+                quantity = int(data.get('quantity', 1))
+            else:
+                product_id = request.POST.get('product_id')
+                quantity = int(request.POST.get('quantity', 1))
             
             product = get_object_or_404(Product, id=product_id, is_active=True)
             
@@ -183,8 +272,6 @@ def add_to_cart_view(request):
                     })
             
             cart = get_cart_for_request(request)
-            if not cart:
-                cart = Cart.objects.create(user=request.user)
             
             # Add or update item in cart
             cart_item, created = CartItem.objects.get_or_create(
@@ -199,24 +286,53 @@ def add_to_cart_view(request):
             
             # Update cart totals
             cart.save()
-            
-            return JsonResponse({
-                'success': True,
-                'message': 'Product added to cart!',
-                'cart_items_count': cart.total_items,
-                'cart_subtotal': float(cart.subtotal)
-            })
+
+            # Keep session cart in sync for template-wide sidebar rendering.
+            session_cart = request.session.get("cart", {})
+            session_key = str(product.id)
+            if session_key in session_cart:
+                session_cart[session_key]["quantity"] += quantity
+                session_cart[session_key]["cart_item_id"] = cart_item.id
+            else:
+                session_cart[session_key] = {
+                    "name": product.name,
+                    "price": float(product.price),
+                    "quantity": quantity,
+                    "image": product.get_main_image_url(),
+                    "cart_item_id": cart_item.id,
+                }
+            request.session["cart"] = session_cart
+            request.session.modified = True
+
+            session_total = sum(item["price"] * item["quantity"] for item in session_cart.values())
+
+            if is_ajax:
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Product added to cart!',
+                    'cart_items_count': cart.total_items,
+                    'cart_subtotal': float(cart.subtotal),
+                    'cart_total': float(session_total),
+                })
+
+            messages.success(request, "Product added to cart!")
+            return redirect('shop:cart_view')
             
         except (ValueError, KeyError) as e:
-            return JsonResponse({
-                'success': False,
-                'message': 'Invalid request data.'
-            })
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Invalid request data.'
+                })
+            messages.error(request, "Invalid request data.")
+            return redirect('shop:shop')
     
-    return JsonResponse({
-        'success': False,
-        'message': 'Invalid request method.'
-    })
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({
+            'success': False,
+            'message': 'Invalid request method.'
+        })
+    return redirect('shop:shop')
 
 
 @login_required
@@ -225,9 +341,25 @@ def remove_from_cart_view(request, item_id):
     cart = get_cart_for_request(request)
     if cart:
         cart_item = get_object_or_404(CartItem, id=item_id, cart=cart)
+        product_id = cart_item.product.id
         cart_item.delete()
+        cart.save()
+
+        # Sync session cart for sidebar context
+        session_cart = request.session.get("cart", {})
+        session_cart.pop(str(product_id), None)
+        request.session["cart"] = session_cart
+        request.session.modified = True
+
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return JsonResponse({
+                'success': True,
+                'message': 'Item removed from cart.',
+                'cart_subtotal': float(cart.subtotal),
+                'cart_items_count': cart.total_items,
+            })
         messages.success(request, "Item removed from cart.")
-    return redirect('cart_view')
+    return redirect('shop:cart_view')
 
 
 @login_required
@@ -259,6 +391,20 @@ def update_cart_quantity_view(request):
                 
                 cart_item.quantity = quantity
                 cart_item.save()
+
+                # Sync session cart for sidebar context
+                session_cart = request.session.get("cart", {})
+                session_key = str(cart_item.product.id)
+                existing_item = session_cart.get(session_key, {})
+                session_cart[session_key] = {
+                    "name": existing_item.get("name", cart_item.product.name),
+                    "price": existing_item.get("price", float(cart_item.product.price)),
+                    "quantity": quantity,
+                    "image": existing_item.get("image", cart_item.product.get_main_image_url()),
+                    "cart_item_id": cart_item.id,
+                }
+                request.session["cart"] = session_cart
+                request.session.modified = True
                 
                 return JsonResponse({
                     'success': True,
@@ -284,9 +430,12 @@ def update_cart_quantity_view(request):
 def cart_view(request):
     """Cart page"""
     cart = get_cart_for_request(request)
-    
+    cart_items = cart.items.select_related('product', 'product__category').all() if cart else []
+
     context = {
         'cart': cart,
+        'cart_items': cart_items,
+        'cart_total': cart.subtotal if cart else Decimal('0.00'),
     }
     
     return render(request, 'shop/cart.html', context)
@@ -296,6 +445,7 @@ def cart_view(request):
 def checkout_view(request):
     """Checkout process with Paystack integration"""
     cart = get_cart_for_request(request)
+    logger.info("Checkout started")
     
     if not cart or cart.items.count() == 0:
         messages.warning(request, "Your cart is empty.")
@@ -320,7 +470,7 @@ def checkout_view(request):
                     # Create order first
                     order = Order.objects.create(
                         user=request.user,
-                        status='payment_pending',
+                        status='pending',
                         subtotal=cart.subtotal,
                         tax_amount=Decimal('0.00'),
                         shipping_cost=Decimal('0.00'),
@@ -343,6 +493,7 @@ def checkout_view(request):
                         )
 
                     payment_method = form.cleaned_data['payment_method']
+                    logger.info(f"Payment method: {payment_method}")
 
                     # Handle payment based on method
                     if payment_method == 'paystack':
@@ -353,24 +504,22 @@ def checkout_view(request):
 
                     elif payment_method == 'walk_in':
                         # Walk-in / pay at salon - no immediate payment
-                        order.status = 'processing'
+                        order.status = 'payment_pending'
+                        order.payment_method = 'walk_in'
                         order.save()
 
-                        # Update stock
-                        for cart_item in cart.items.select_related('product'):
-                            if cart_item.product.track_inventory:
-                                Product.objects.filter(
-                                    id=cart_item.product.id
-                                ).select_for_update().update(
-                                    stock_quantity=F('stock_quantity') - cart_item.quantity
-                                )
+                        _reduce_order_stock(order)
 
                         # Clear cart
                         cart.items.all().delete()
                         cart.delete()
+                        CartItem.objects.filter(cart__user=request.user).delete()
+                        request.session["last_order_id"] = order.id
+                        _clear_session_cart(request)
+                        send_order_notifications(order)
 
                         messages.success(request, "Order placed! Pay when you visit the salon.")
-                        return redirect('shop:order_success', order_id=order.id)
+                        return redirect('shop:checkout_success', order_id=order.id)
 
             except Exception as e:
                 messages.error(request, f"An error occurred: {str(e)}")
@@ -396,6 +545,16 @@ def order_success_view(request, order_id):
     }
     
     return render(request, 'shop/order_success.html', context)
+
+
+@login_required
+def checkout_success_view(request, order_id):
+    order = get_object_or_404(Order, id=order_id, user=request.user)
+    return render(request, "shop/checkout_success.html", {"order": order})
+
+
+def terms_view(request):
+    return render(request, "legal/terms.html")
 
 
 @login_required
@@ -444,7 +603,7 @@ def initiate_payment(request, order_id):
     """Initiate Paystack payment for an order"""
     order = get_object_or_404(Order, id=order_id, user=request.user)
     
-    if order.status != 'payment_pending':
+    if order.status not in ('pending', 'payment_pending'):
         messages.error(request, "This order cannot be paid for.")
         return redirect('shop:order_history')
     
@@ -493,7 +652,7 @@ def initiate_paypal_payment(request, order_id):
     import requests as http_requests
     order = get_object_or_404(Order, id=order_id, user=request.user)
 
-    if order.status != 'payment_pending':
+    if order.status not in ('pending', 'payment_pending'):
         messages.error(request, "This order cannot be paid for.")
         return redirect('shop:order_history')
 
@@ -568,6 +727,9 @@ def paypal_success(request, order_id):
     import requests as http_requests
     order = get_object_or_404(Order, id=order_id, user=request.user)
 
+    if order.status == 'paid':
+        return redirect('shop:checkout_success', order_id=order.id)
+
     paypal_order_id = order.paypal_order_id
     if not paypal_order_id:
         messages.error(request, "Invalid PayPal session.")
@@ -604,20 +766,27 @@ def paypal_success(request, order_id):
         capture_data = capture_response.json()
         if capture_data.get('status') == 'COMPLETED':
             with transaction.atomic():
-                order.status = 'processing'
+                order.status = 'paid'
                 order.payment_status = 'completed'
                 order.save()
+
+                _reduce_order_stock(order)
 
                 # Clear cart
                 cart = get_cart_for_request(request)
                 if cart:
                     cart.items.all().delete()
                     cart.delete()
+                CartItem.objects.filter(cart__user=request.user).delete()
+                request.session["last_order_id"] = order.id
+                _clear_session_cart(request)
+                send_order_notifications(order)
 
             messages.success(request, "PayPal payment successful! Your order is being processed.")
-            return redirect('shop:order_success', order_id=order.id)
+            return redirect('shop:checkout_success', order_id=order.id)
 
     # Payment not completed
+    order.status = 'failed'
     order.payment_status = 'failed'
     order.save()
     messages.error(request, "PayPal payment could not be completed. Please try again.")
@@ -639,6 +808,9 @@ def paypal_cancel(request, order_id):
 def verify_payment(request, order_id):
     """Verify Paystack payment after callback"""
     order = get_object_or_404(Order, id=order_id, user=request.user)
+
+    if order.status == 'paid':
+        return redirect('shop:checkout_success', order_id=order.id)
     
     # Get reference from query parameters
     reference = request.GET.get('reference', order.paystack_reference)
@@ -647,29 +819,48 @@ def verify_payment(request, order_id):
         messages.error(request, "No payment reference provided.")
         return redirect('shop:order_history')
     
-    # Verify payment with Paystack
-    paystack = Paystack()
-    verification = paystack.verify_transaction(reference)
-    
-    if verification.get('status') and verification['data']['status'] == 'success':
+    # Verify payment with Paystack (server-side)
+    verify_url = f"https://api.paystack.co/transaction/verify/{reference}"
+    headers = {"Authorization": f"Bearer {settings.PAYSTACK_SECRET_KEY}"}
+    response = requests.get(verify_url, headers=headers, timeout=30)
+
+    if response.status_code != 200:
+        messages.error(request, "Payment verification failed. Please try again.")
+        return redirect('shop:checkout')
+
+    verification = response.json()
+    paystack_data = verification.get('data', {})
+    paystack_status = paystack_data.get('status')
+    paystack_amount = Decimal(str(paystack_data.get('amount', 0))) / Decimal('100')
+
+    if paystack_amount != order.total_amount:
+        return HttpResponseForbidden("Payment mismatch")
+
+    if verification.get('status') and paystack_status == 'success':
         with transaction.atomic():
             # Payment successful
-            order.status = 'processing'
+            order.status = 'paid'
             order.payment_status = 'completed'
             order.paystack_reference = reference
             order.save()
+
+            _reduce_order_stock(order)
 
             # Clear cart if it exists
             cart = get_cart_for_request(request)
             if cart:
                 cart.items.all().delete()
                 cart.delete()
+            CartItem.objects.filter(cart__user=request.user).delete()
+            request.session["last_order_id"] = order.id
+            _clear_session_cart(request)
+            send_order_notifications(order)
 
         messages.success(request, "Payment successful! Your order is being processed.")
-        return redirect('shop:order_success', order_id=order.id)
+        return redirect('shop:checkout_success', order_id=order.id)
     else:
         # Payment failed
-        order.status = 'pending'
+        order.status = 'failed'
         order.payment_status = 'failed'
         order.save()
         

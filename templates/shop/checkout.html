@@ -149,12 +149,12 @@
                         </h3>
                         
                         <div class="payment-method">
-                            <input type="radio" name="payment_method" value="card" id="card" checked class="d-none">
-                            <label for="card">
+                            <input type="radio" name="payment_method" value="paystack" id="paystack" checked class="d-none">
+                            <label for="paystack">
                                 <i class="fas fa-credit-card payment-icon"></i>
                                 <div>
-                                    <strong>Credit/Debit Card</strong>
-                                    <p class="mb-0 small text-muted">Pay securely with your card</p>
+                                    <strong>Paystack</strong>
+                                    <p class="mb-0 small text-muted">Pay securely with Paystack</p>
                                 </div>
                             </label>
                         </div>
@@ -171,12 +171,12 @@
                         </div>
                         
                         <div class="payment-method">
-                            <input type="radio" name="payment_method" value="cod" id="cod" class="d-none">
-                            <label for="cod">
+                            <input type="radio" name="payment_method" value="walk_in" id="walk_in" class="d-none">
+                            <label for="walk_in">
                                 <i class="fas fa-money-bill-wave payment-icon"></i>
                                 <div>
-                                    <strong>Cash on Delivery</strong>
-                                    <p class="mb-0 small text-muted">Pay when you receive your order</p>
+                                    <strong>Walk-in Payment</strong>
+                                    <p class="mb-0 small text-muted">Pay in person at the salon</p>
                                 </div>
                             </label>
                         </div>
@@ -231,9 +231,9 @@
                         
                         <div class="mt-4">
                             <div class="form-check mb-3">
-                                <input class="form-check-input" type="checkbox" id="terms" required>
+                                <input class="form-check-input" type="checkbox" id="terms" name="terms_accepted" required>
                                 <label class="form-check-label" for="terms">
-                                    I agree to the <a href="#" target="_blank">terms and conditions</a> *
+                                    I agree to the <a href="{% url 'shop:terms' %}" target="_blank">terms and conditions</a> *
                                 </label>
                             </div>
                             

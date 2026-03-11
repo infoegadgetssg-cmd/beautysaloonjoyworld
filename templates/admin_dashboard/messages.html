@@ -68,76 +68,23 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h4>Messages Management</h4>
     <div>
-        <span class="badge bg-primary">{{ total_messages }} Total Messages</span>
-        {% if unread_count > 0 %}
-        <span class="badge bg-warning ms-2">{{ unread_count }} Unread</span>
-        {% endif %}
+        <span class="badge bg-primary" id="totalMessagesBadge">{{ total_messages }} Total Messages</span>
+        <span class="badge bg-warning ms-2" id="unreadMessagesBadge"{% if unread_count == 0 %} style="display:none"{% endif %}>{{ unread_count }} Unread</span>
     </div>
 </div>
 
 <!-- Filter Buttons -->
 <div class="d-flex gap-2 mb-4">
-    <button class="btn btn-outline-primary active" onclick="filterMessages('all')">All</button>
-    <button class="btn btn-outline-primary" onclick="filterMessages('unread')">
+    <button class="btn btn-outline-primary active" onclick="filterMessages('all', this)">All</button>
+    <button class="btn btn-outline-primary" onclick="filterMessages('unread', this)">
         Unread {% if unread_count > 0 %}<span class="badge bg-danger ms-1">{{ unread_count }}</span>{% endif %}
     </button>
-    <button class="btn btn-outline-primary" onclick="filterMessages('urgent')">Urgent</button>
+    <button class="btn btn-outline-primary" onclick="filterMessages('urgent', this)">Urgent</button>
 </div>
 
 <!-- Messages List -->
 <div id="messagesList">
-    {% for message in messages %}
-    <div class="message-card {% if not message.is_read %}unread{% endif %} {% if message.urgent %}urgent{% endif %}" 
-         onclick="viewMessage('{{ message.id }}')">
-        <div class="d-flex align-items-start">
-            <div class="sender-avatar me-3">
-                {{ message.name|first|upper }}
-            </div>
-            <div class="flex-grow-1">
-                <div class="d-flex justify-content-between align-items-start mb-2">
-                    <div>
-                        <h6 class="mb-1">{{ message.name }}</h6>
-                        <small class="text-muted">{{ message.email }}</small>
-                    </div>
-                    <div>
-                        {% if not message.is_read %}
-                        <span class="unread-badge me-2">New</span>
-                        {% endif %}
-                        {% if message.urgent %}
-                        <span class="urgent-badge">Urgent</span>
-                        {% endif %}
-                    </div>
-                </div>
-                
-                <h6 class="mb-2">{{ message.subject|default:"No Subject" }}</h6>
-                <p class="mb-2 text-muted">{{ message.message|truncatechars:150 }}</p>
-                
-                <div class="d-flex justify-content-between align-items-center">
-                    <small class="text-muted">
-                        <i class="fas fa-clock me-1"></i>
-                        {{ message.created_at|timesince }} ago
-                    </small>
-                    <div>
-                        {% if not message.is_read %}
-                        <button class="btn btn-sm btn-outline-success" onclick="markAsRead('{{ message.id }}', event)">
-                            <i class="fas fa-check"></i> Mark Read
-                        </button>
-                        {% endif %}
-                        <button class="btn btn-sm btn-outline-danger" onclick="deleteMessage('{{ message.id }}', event)">
-                            <i class="fas fa-trash"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
-    {% empty %}
-    <div class="card text-center py-5">
-        <i class="fas fa-envelope-open fa-3x text-muted mb-3"></i>
-        <h5 class="text-muted">No messages found</h5>
-        <p class="text-muted">All caught up!</p>
-    </div>
-    {% endfor %}
+    {% include 'admin_dashboard/_messages_list.html' %}
 </div>
 
 <!-- Message Details Modal -->
@@ -196,23 +143,96 @@
 
 {% block extra_js %}
 <script>
-    function filterMessages(filter) {
-        // Remove active class from all buttons
-        document.querySelectorAll('.btn-outline-primary').forEach(btn => {
-            btn.classList.remove('active');
-        });
-        
-        // Add active class to clicked button
-        event.target.classList.add('active');
-        
-        // In a real app, you would make an AJAX call to filter messages
-        console.log('Filtering messages by:', filter);
-        
-        // For demo, we'll just show a message
-        if (filter !== 'all') {
-            alert(`Filtering messages: ${filter} (This would filter via AJAX in a real app)`);
+    function buildMessageCard(message) {
+        const unreadClass = message.is_read ? '' : 'unread';
+        const urgentClass = message.is_urgent ? 'urgent' : '';
+        return `
+        <div class="message-card ${unreadClass} ${urgentClass}" onclick="viewMessage('${message.id}')">
+            <div class="d-flex align-items-start">
+                <div class="sender-avatar me-3">
+                    ${message.name.charAt(0).toUpperCase()}
+                </div>
+                <div class="flex-grow-1">
+                    <div class="d-flex justify-content-between align-items-start mb-2">
+                        <div>
+                            <h6 class="mb-1">${message.name}</h6>
+                            <small class="text-muted">${message.email}</small>
+                        </div>
+                        <div>
+                            ${message.is_read ? '' : '<span class="unread-badge me-2">New</span>'}
+                            ${message.is_urgent ? '<span class="urgent-badge">Urgent</span>' : ''}
+                        </div>
+                    </div>
+                    <h6 class="mb-2">${message.subject}</h6>
+                    <p class="mb-2 text-muted">${message.message.slice(0, 150)}${message.message.length > 150 ? '...' : ''}</p>
+                    <div class="d-flex justify-content-between align-items-center">
+                        <small class="text-muted">
+                            <i class="fas fa-clock me-1"></i>
+                            ${message.timesince}
+                        </small>
+                        <div>
+                            ${message.is_read ? '' : `<button class="btn btn-sm btn-outline-success" onclick="markAsRead('${message.id}', event)"><i class="fas fa-check"></i> Mark Read</button>`}
+                            <button class="btn btn-sm btn-outline-danger" onclick="deleteMessage('${message.id}', event)"><i class="fas fa-trash"></i></button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>`;
+    }
+
+    function renderMessages(messages) {
+        const container = document.getElementById('messagesList');
+        if (!messages.length) {
+            container.innerHTML = `
+            <div class="card text-center py-5">
+                <i class="fas fa-envelope-open fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">No messages found</h5>
+                <p class="text-muted">All caught up!</p>
+            </div>`;
+            return;
+        }
+        container.innerHTML = messages.map(buildMessageCard).join('');
+    }
+
+    function updateMessageCounts(data) {
+        const totalBadge = document.getElementById('totalMessagesBadge');
+        const unreadBadge = document.getElementById('unreadMessagesBadge');
+        if (totalBadge) {
+            totalBadge.textContent = `${data.total} Total Messages`;
+        }
+        if (unreadBadge) {
+            if (data.unread > 0) {
+                unreadBadge.textContent = `${data.unread} Unread`;
+                unreadBadge.style.display = 'inline-block';
+            } else {
+                unreadBadge.style.display = 'none';
+            }
         }
     }
+
+    function filterMessages(filter, button) {
+        document.querySelectorAll('.btn-outline-primary').forEach(btn => btn.classList.remove('active'));
+        if (button) button.classList.add('active');
+        const url = new URL('/admin-dashboard/api/messages/', window.location.origin);
+        if (filter && filter !== 'all') url.searchParams.set('filter', filter);
+        fetch(url)
+            .then(resp => {
+                if (!resp.ok) throw new Error('Unable to load messages');
+                return resp.json();
+            })
+            .then(data => {
+                renderMessages(data.messages);
+                updateMessageCounts(data);
+            })
+            .catch(() => {
+                alert('Unable to load messages. Please refresh.');
+            });
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const activeBtn = document.querySelector('.btn-outline-primary.active');
+        filterMessages('all', activeBtn);
+    });
     
     function viewMessage(messageId) {
         // Dummy message data

@@ -2,8 +2,11 @@
 from django.db import models
 from django.conf import settings
 from django.utils import timezone
+from django.db.models.signals import pre_save, post_save
+from django.dispatch import receiver
+from booking.models import Booking
 from services.models import Service  
-from shop.models import Product
+from shop.models import Product, Order
 
 class UserFavorite(models.Model):
     """User's favorite services/products"""
@@ -93,3 +96,69 @@ class UserLoyalty(models.Model):
             self.save()
             return True
         return False
+
+
+@receiver(pre_save, sender=Order)
+def cache_previous_order_status(sender, instance, **kwargs):
+    instance._old_status = None
+    if instance.pk:
+        old_order = sender.objects.filter(pk=instance.pk).only('status').first()
+        if old_order:
+            instance._old_status = old_order.status
+
+
+@receiver(post_save, sender=Order)
+def create_order_notifications(sender, instance, created, **kwargs):
+    if not instance.user_id:
+        return
+
+    if created:
+        UserNotification.objects.create(
+            user=instance.user,
+            title="Order Placed",
+            message=f"Your order #{instance.id} has been placed successfully.",
+            notification_type='system'
+        )
+        return
+
+    old_status = getattr(instance, '_old_status', None)
+    if old_status and old_status != instance.status:
+        UserNotification.objects.create(
+            user=instance.user,
+            title="Order Status Updated",
+            message=f"Your order #{instance.id} status changed to {instance.get_status_display()}.",
+            notification_type='system'
+        )
+
+
+@receiver(pre_save, sender=Booking)
+def cache_previous_booking_status(sender, instance, **kwargs):
+    instance._old_status = None
+    if instance.pk:
+        old_booking = sender.objects.filter(pk=instance.pk).only('status').first()
+        if old_booking:
+            instance._old_status = old_booking.status
+
+
+@receiver(post_save, sender=Booking)
+def create_booking_notifications(sender, instance, created, **kwargs):
+    if not instance.user_id:
+        return
+
+    if created:
+        UserNotification.objects.create(
+            user=instance.user,
+            title="Booking Confirmed",
+            message=f"Your booking for {instance.service.name} on {instance.date} at {instance.time} was created.",
+            notification_type='booking_confirmation'
+        )
+        return
+
+    old_status = getattr(instance, '_old_status', None)
+    if old_status and old_status != instance.status:
+        UserNotification.objects.create(
+            user=instance.user,
+            title="Booking Status Updated",
+            message=f"Your booking #{instance.id} status changed to {instance.get_status_display()}.",
+            notification_type='booking_update'
+        )

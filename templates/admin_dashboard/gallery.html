@@ -31,6 +31,25 @@
         gap: 5px;
         justify-content: flex-end;
     }
+
+    .image-preview-wrapper {
+        display: none;
+        margin-top: 12px;
+    }
+
+    .image-preview {
+        width: 100%;
+        max-height: 220px;
+        object-fit: cover;
+        border-radius: 10px;
+        border: 1px solid #e9ecef;
+    }
+
+    .upload-status {
+        display: none;
+        margin-top: 10px;
+        font-size: 0.9rem;
+    }
 </style>
 {% endblock %}
 
@@ -38,6 +57,9 @@
 <div class="d-flex justify-content-between align-items-center mb-4">
     <h4>Gallery Management</h4>
     <div>
+        <a href="{% url 'admin_dashboard:gallery_categories' %}" class="btn btn-outline-secondary me-2">
+            <i class="fas fa-tags me-2"></i> Manage Categories
+        </a>
         <button class="btn btn-primary" onclick="showAddImageModal()">
             <i class="fas fa-plus me-2"></i> Add Image
         </button>
@@ -72,6 +94,25 @@
     {% endfor %}
 </div>
 
+<!-- Delete Confirmation Modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">Confirm Delete</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="mb-0">Are you sure you want to delete this image? This action cannot be undone.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
+                <button type="button" class="btn btn-danger" id="confirmDeleteBtn">Delete</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Add/Edit Image Modal -->
 <div class="modal fade" id="imageModal" tabindex="-1">
     <div class="modal-dialog modal-lg">
@@ -80,44 +121,269 @@
                 <h5 class="modal-title" id="imageModalTitle">Add Image</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form id="imageForm" method="post" enctype="multipart/form-data" action="{% url 'admin_dashboard:gallery' %}">
+            <form id="imageForm" method="post" enctype="multipart/form-data" action="{% url 'admin_dashboard:add_image' %}">
                 {% csrf_token %}
+                <input type="hidden" id="imageId" name="image_id" value="">
                 <div class="modal-body">
                     <div class="mb-3">
                         <label class="form-label">Image *</label>
-                        <input type="file" class="form-control" name="image" accept="image/*" required>
+                        <input type="file" class="form-control" id="galleryImageInput" name="image" accept="image/*" required>
                         <small class="text-muted">Recommended size: 1200x800px, max 5MB</small>
+                        <div class="image-preview-wrapper" id="imagePreviewWrapper">
+                            <img src="" alt="Selected preview" class="image-preview" id="imagePreview">
+                        </div>
+                        <div class="upload-status text-muted" id="uploadStatus"></div>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Title *</label>
-                        <input type="text" class="form-control" name="title" required>
+                        <input type="text" class="form-control" id="galleryTitleInput" name="title" required>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Description</label>
-                        <textarea class="form-control" name="description" rows="3"></textarea>
+                        <textarea class="form-control" id="galleryDescriptionInput" name="description" rows="3"></textarea>
                     </div>
                     <div class="mb-3">
                         <label class="form-label">Category *</label>
-                        <select class="form-select" name="category" required>
+                        <select class="form-select" id="galleryCategoryInput" name="category" required>
                             <option value="">Select Category</option>
-                            {% for category in categories %}
-                            <option value="{{ category.id }}">{{ category.name }}</option>
-                            {% endfor %}
+                        </select>
+                        <small class="text-danger d-none" id="noCategoriesMessage">
+                            No categories available. Please create one in Gallery Categories.
+                        </small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Image Type</label>
+                        <select class="form-select" id="galleryImageTypeInput" name="image_type">
+                            <option value="standard">Standard</option>
+                            <option value="featured">Featured</option>
+                            <option value="horizontal">Horizontal</option>
+                            <option value="vertical">Vertical</option>
                         </select>
                     </div>
                     <div class="form-check mb-3">
-                        <input class="form-check-input" type="checkbox" name="is_featured" id="isFeatured">
-                        <label class="form-check-label" for="isFeatured">
-                            Mark as featured image
+                        <input class="form-check-input" type="checkbox" name="is_published" id="isPublished" checked>
+                        <label class="form-check-label" for="isPublished">
+                            Publish image
                         </label>
                     </div>
                 </div>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancel</button>
-                    <button type="submit" class="btn btn-primary">Save Image</button>
+                    <button type="submit" class="btn btn-primary" id="saveImageBtn">Upload Image</button>
                 </div>
             </form>
         </div>
     </div>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    const imageModalEl = document.getElementById('imageModal');
+    const imageModal = new bootstrap.Modal(imageModalEl);
+    const deleteModal = new bootstrap.Modal(document.getElementById('deleteModal'));
+    const imageForm = document.getElementById('imageForm');
+    const imageInput = document.getElementById('galleryImageInput');
+    const previewWrapper = document.getElementById('imagePreviewWrapper');
+    const previewImage = document.getElementById('imagePreview');
+    const uploadStatus = document.getElementById('uploadStatus');
+    const saveImageBtn = document.getElementById('saveImageBtn');
+    const categoryInput = document.getElementById('galleryCategoryInput');
+    const noCategoriesMessage = document.getElementById('noCategoriesMessage');
+    let pendingDeleteImageId = null;
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+
+    function setUploadStatus(message, type) {
+        uploadStatus.style.display = 'block';
+        uploadStatus.classList.remove('text-muted', 'text-success', 'text-danger');
+        uploadStatus.classList.add(type === 'success' ? 'text-success' : (type === 'error' ? 'text-danger' : 'text-muted'));
+        uploadStatus.textContent = message;
+    }
+
+    function resetImageFormState() {
+        imageForm.reset();
+        imageForm.action = "{% url 'admin_dashboard:add_image' %}";
+        document.getElementById('imageId').value = '';
+        document.getElementById('imageModalTitle').textContent = 'Add Image';
+        saveImageBtn.textContent = 'Upload Image';
+        imageInput.required = true;
+        previewImage.src = '';
+        previewWrapper.style.display = 'none';
+        uploadStatus.style.display = 'none';
+    }
+
+    function populateCategoryOptions(categories, selectedId = '') {
+        categoryInput.innerHTML = '<option value="">Select Category</option>';
+        categories.forEach((category) => {
+            const option = document.createElement('option');
+            option.value = category.id;
+            option.textContent = category.name;
+            categoryInput.appendChild(option);
+        });
+        if (selectedId) {
+            categoryInput.value = String(selectedId);
+        }
+    }
+
+    async function loadGalleryCategories(selectedId = '') {
+        try {
+            const response = await fetch('/admin-dashboard/api/gallery-categories/', {
+                headers: { 'X-Requested-With': 'XMLHttpRequest' }
+            });
+            const data = await response.json();
+            if (!response.ok || !data.success) {
+                throw new Error(data.message || 'Failed to load categories.');
+            }
+
+            const categories = data.categories || [];
+            populateCategoryOptions(categories, selectedId);
+
+            const hasCategories = categories.length > 0;
+            categoryInput.disabled = !hasCategories;
+            saveImageBtn.disabled = !hasCategories;
+            noCategoriesMessage.classList.toggle('d-none', hasCategories);
+            if (!hasCategories) {
+                setUploadStatus('Create a gallery category before uploading images.', 'error');
+            }
+        } catch (error) {
+            categoryInput.disabled = true;
+            saveImageBtn.disabled = true;
+            noCategoriesMessage.classList.remove('d-none');
+            setUploadStatus(error.message, 'error');
+        }
+    }
+
+    function setLoading(isLoading) {
+        saveImageBtn.disabled = isLoading;
+        saveImageBtn.innerHTML = isLoading
+            ? '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>Uploading...'
+            : (document.getElementById('imageId').value ? 'Update Image' : 'Upload Image');
+    }
+
+    function showAddImageModal() {
+        resetImageFormState();
+        loadGalleryCategories().then(() => imageModal.show());
+    }
+
+    function editImage(imageId) {
+        resetImageFormState();
+        fetch(`/admin-dashboard/api/gallery-image/${imageId}/`)
+            .then((response) => response.json())
+            .then((data) => {
+                if (!data.success) {
+                    throw new Error(data.message || 'Failed to load image data.');
+                }
+
+                const image = data.image;
+                document.getElementById('imageId').value = image.id;
+                document.getElementById('galleryTitleInput').value = image.title || '';
+                document.getElementById('galleryDescriptionInput').value = image.description || '';
+                document.getElementById('galleryImageTypeInput').value = image.image_type || 'standard';
+                document.getElementById('isPublished').checked = !!image.is_published;
+                document.getElementById('imageModalTitle').textContent = 'Edit Image';
+                imageForm.action = `/admin-dashboard/gallery-image/${image.id}/update/`;
+                saveImageBtn.textContent = 'Update Image';
+                imageInput.required = false;
+
+                if (image.image_url) {
+                    previewImage.src = image.image_url;
+                    previewWrapper.style.display = 'block';
+                }
+
+                loadGalleryCategories(image.category_id || '').then(() => imageModal.show());
+            })
+            .catch((error) => {
+                showErrorModal('Error', error.message);
+            });
+    }
+
+    function deleteImage(imageId) {
+        pendingDeleteImageId = imageId;
+        deleteModal.show();
+    }
+
+    function confirmDeleteImage() {
+        if (!pendingDeleteImageId) return;
+        fetch(`/admin-dashboard/gallery-image/${pendingDeleteImageId}/delete/`, {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then((response) => response.json())
+        .then((data) => {
+            if (!data.success) {
+                throw new Error(data.message || 'Failed to delete image.');
+            }
+            deleteModal.hide();
+            showSuccessModal('Deleted', data.message || 'Image deleted successfully.');
+            setTimeout(() => window.location.reload(), 900);
+        })
+        .catch((error) => {
+            showErrorModal('Error', error.message);
+        });
+    }
+
+    imageInput.addEventListener('change', function () {
+        const file = this.files && this.files[0];
+        if (!file) return;
+        previewImage.src = URL.createObjectURL(file);
+        previewWrapper.style.display = 'block';
+    });
+
+    imageForm.addEventListener('submit', function (event) {
+        event.preventDefault();
+        setLoading(true);
+        setUploadStatus('Uploading image to Cloudinary...', 'info');
+
+        const formData = new FormData(imageForm);
+
+        fetch(imageForm.action, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': getCookie('csrftoken'),
+                'X-Requested-With': 'XMLHttpRequest'
+            }
+        })
+        .then((response) => response.json().then((data) => ({ ok: response.ok, data })))
+        .then(({ ok, data }) => {
+            if (!ok || !data.success) {
+                throw new Error(data.message || 'Image upload failed.');
+            }
+
+            setUploadStatus(data.message || 'Image uploaded successfully.', 'success');
+            showSuccessModal('Success', data.message || 'Image uploaded successfully.');
+            imageModal.hide();
+            setTimeout(() => window.location.reload(), 900);
+        })
+        .catch((error) => {
+            setUploadStatus(error.message, 'error');
+            showErrorModal('Upload Failed', error.message);
+        })
+        .finally(() => {
+            setLoading(false);
+        });
+    });
+
+    document.addEventListener('DOMContentLoaded', function () {
+        loadGalleryCategories();
+        document.getElementById('confirmDeleteBtn').addEventListener('click', confirmDeleteImage);
+    });
+</script>
 {% endblock %}

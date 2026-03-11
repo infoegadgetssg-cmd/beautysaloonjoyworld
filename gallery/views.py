@@ -12,12 +12,28 @@ from django.utils.decorators import method_decorator
 from .models import GalleryCategory, GalleryImage, BeforeAfterImage, ImageLike
 from contact.models import Testimonial
 
+
+def _ensure_uncategorized_category():
+    category, _ = GalleryCategory.objects.get_or_create(
+        slug='uncategorized',
+        defaults={
+            'name': 'Uncategorized',
+            'description': 'Fallback category for uncategorized images',
+            'is_active': True,
+            'order': 999,
+        }
+    )
+    GalleryImage.objects.filter(category__isnull=True).update(category=category)
+    return category
+
+
 class GalleryView(TemplateView):
     """Main gallery page view"""
     template_name = 'gallery/gallery.html'
     
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
+        _ensure_uncategorized_category()
         
         # Get all active categories
         categories = GalleryCategory.objects.filter(is_active=True).order_by('order', 'name')
@@ -46,6 +62,7 @@ class GalleryView(TemplateView):
         
         context.update({
             'categories': categories,
+            'images': gallery_images,
             'gallery_images': gallery_images,
             'before_after_images': before_after_images,
             'testimonials': testimonials,
@@ -121,6 +138,7 @@ class ImageDetailView(DetailView):
 @require_GET
 def gallery_filter_view(request):
     """AJAX view for filtering gallery images"""
+    _ensure_uncategorized_category()
     category_slug = request.GET.get('category', 'all')
     page = request.GET.get('page', 1)
     

@@ -37,6 +37,10 @@
         object-fit: cover;
         border-radius: 10px;
     }
+
+    .cart-item-details {
+        padding-left: 14px;
+    }
     
     .quantity-controls {
         display: flex;
@@ -124,6 +128,10 @@
             width: 80px;
             height: 80px;
         }
+
+        .cart-item-details {
+            padding-left: 8px;
+        }
         
         .cart-item-card {
             padding: 15px;
@@ -140,19 +148,19 @@
             <p class="mb-0">Review your items before checkout</p>
         </div>
 
-        {% if cart and cart.items.exists %}
+        {% if cart_items %}
         <div class="row">
             <div class="col-lg-8">
                 <div class="cart-items" id="cartItems">
-                    {% for item in cart.items.all %}
-                    <div class="cart-item-card" data-item-id="{{ item.id }}">
+                    {% for item in cart_items %}
+                    <div class="cart-item-card" data-item-id="{{ item.id }}" data-unit-price="{{ item.product.price }}">
                         <div class="row align-items-center">
                             <div class="col-md-2 col-4">
                                 <img src="{{ item.product.get_main_image_url }}" 
                                      alt="{{ item.product.name }}" 
                                      class="cart-item-image">
                             </div>
-                            <div class="col-md-4 col-8">
+                            <div class="col-md-4 col-8 cart-item-details">
                                 <h5 class="mb-2">{{ item.product.name }}</h5>
                                 <p class="text-muted mb-2">{{ item.product.category.name }}</p>
                                 <p class="mb-0 fw-bold">£{{ item.product.price }}</p>
@@ -195,7 +203,7 @@
                     
                     <div class="summary-row">
                         <span>Subtotal</span>
-                        <span id="cartSubtotal">£{{ cart.subtotal }}</span>
+                        <span id="cartSubtotal">£{{ cart_total }}</span>
                     </div>
                     
                     <div class="summary-row">
@@ -210,7 +218,7 @@
                     
                     <div class="summary-row total">
                         <span>Total</span>
-                        <span id="cartTotal">£{{ cart.subtotal }}</span>
+                        <span id="cartTotal">£{{ cart_total }}</span>
                     </div>
                     
                     <div class="mt-4">
@@ -226,7 +234,7 @@
                         <div class="form-check">
                             <input class="form-check-input" type="checkbox" id="acceptTerms" checked>
                             <label class="form-check-label" for="acceptTerms">
-                                I agree to the <a href="#">terms and conditions</a>
+                                I agree to the <a href="{% url 'shop:terms' %}" target="_blank">terms and conditions</a>
                             </label>
                         </div>
                     </div>
@@ -251,10 +259,64 @@
 <script>
 document.addEventListener('DOMContentLoaded', function() {
     AOS.init({ duration: 800 });
+
+    function getCsrfToken() {
+        const tokenInput = document.querySelector('[name=csrfmiddlewaretoken]');
+        if (tokenInput) return tokenInput.value;
+        return '{{ csrf_token }}';
+    }
+
+    function recalculateItemTotal(itemId, quantity) {
+        const itemCard = document.querySelector(`[data-item-id="${itemId}"]`);
+        if (!itemCard) return;
+
+        const unitPrice = parseFloat(itemCard.dataset.unitPrice || '0');
+        const newItemTotal = unitPrice * parseInt(quantity || 0, 10);
+        const itemTotal = itemCard.querySelector('.item-total');
+        if (itemTotal) {
+            itemTotal.textContent = `£${newItemTotal.toFixed(2)}`;
+        }
+    }
+
+    function recalculateCartSubtotal() {
+        let subtotal = 0;
+        document.querySelectorAll('.cart-item-card').forEach(card => {
+            const unitPrice = parseFloat(card.dataset.unitPrice || '0');
+            const qtyInput = card.querySelector('.quantity-input');
+            const qty = parseInt(qtyInput?.value || '0', 10);
+            subtotal += unitPrice * qty;
+        });
+
+        const subtotalEl = document.getElementById('cartSubtotal');
+        const totalEl = document.getElementById('cartTotal');
+        if (subtotalEl) subtotalEl.textContent = `£${subtotal.toFixed(2)}`;
+        if (totalEl) totalEl.textContent = `£${subtotal.toFixed(2)}`;
+    }
+
+    function calculateTotalItemsFromDOM() {
+        let totalItems = 0;
+        document.querySelectorAll('.quantity-input').forEach(input => {
+            totalItems += parseInt(input.value || '0', 10);
+        });
+        return totalItems;
+    }
+
+    function updateCartCount(newCount) {
+        const cartCount = document.querySelector('.cart-count');
+        if (!cartCount) return;
+        cartCount.textContent = newCount;
+    }
+
+    updateCartCount(calculateTotalItemsFromDOM());
     
     // Update quantity
     document.querySelectorAll('.quantity-input').forEach(input => {
         input.addEventListener('change', function() {
+            if (parseInt(this.value, 10) < 1 || Number.isNaN(parseInt(this.value, 10))) {
+                this.value = 1;
+            }
+            recalculateItemTotal(this.dataset.itemId, this.value);
+            recalculateCartSubtotal();
             updateCartQuantity(this.dataset.itemId, this.value);
         });
     });
@@ -264,6 +326,8 @@ document.addEventListener('DOMContentLoaded', function() {
         btn.addEventListener('click', function() {
             const input = document.querySelector(`input[data-item-id="${this.dataset.itemId}"]`);
             input.value = parseInt(input.value) + 1;
+            recalculateItemTotal(this.dataset.itemId, input.value);
+            recalculateCartSubtotal();
             updateCartQuantity(this.dataset.itemId, input.value);
         });
     });
@@ -274,6 +338,8 @@ document.addEventListener('DOMContentLoaded', function() {
             const input = document.querySelector(`input[data-item-id="${this.dataset.itemId}"]`);
             if (parseInt(input.value) > 1) {
                 input.value = parseInt(input.value) - 1;
+                recalculateItemTotal(this.dataset.itemId, input.value);
+                recalculateCartSubtotal();
                 updateCartQuantity(this.dataset.itemId, input.value);
             }
         });
@@ -289,13 +355,14 @@ document.addEventListener('DOMContentLoaded', function() {
     });
     
     function updateCartQuantity(itemId, quantity) {
-        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const csrfToken = getCsrfToken();
         
         fetch('{% url "shop:update_cart_quantity" %}', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
-                'X-CSRFToken': csrfToken
+                'X-CSRFToken': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest'
             },
             body: JSON.stringify({
                 item_id: itemId,
@@ -315,9 +382,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('cartTotal').textContent = `£${data.cart_subtotal.toFixed(2)}`;
                 
                 // Update cart count in navbar
-                const cartCount = document.querySelector('.cart-count');
-                if (cartCount) {
-                    cartCount.textContent = data.cart_items_count;
+                if (typeof data.cart_items_count === 'number') {
+                    updateCartCount(data.cart_items_count);
+                } else {
+                    updateCartCount(calculateTotalItemsFromDOM());
                 }
                 
                 showNotification('Cart updated successfully!', 'success');
@@ -332,12 +400,13 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     function removeCartItem(itemId) {
-        const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+        const csrfToken = getCsrfToken();
         
         fetch(`{% url "shop:remove_from_cart" 0 %}${itemId}/`, {
             method: 'POST',
             headers: {
-                'X-CSRFToken': csrfToken
+                'X-CSRFToken': csrfToken,
+                'X-Requested-With': 'XMLHttpRequest'
             }
         })
         .then(response => response.json())
@@ -352,9 +421,10 @@ document.addEventListener('DOMContentLoaded', function() {
                 document.getElementById('cartTotal').textContent = `£${data.cart_subtotal.toFixed(2)}`;
                 
                 // Update cart count in navbar
-                const cartCount = document.querySelector('.cart-count');
-                if (cartCount) {
-                    cartCount.textContent = data.cart_items_count;
+                if (typeof data.cart_items_count === 'number') {
+                    updateCartCount(data.cart_items_count);
+                } else {
+                    updateCartCount(calculateTotalItemsFromDOM());
                 }
                 
                 // If cart is empty, show empty state

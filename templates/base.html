@@ -1032,56 +1032,6 @@
       --animate-duration: 1s;
     }
 
-    /* Cart */
-    .cart-sidebar {
-      position: fixed;
-      top: 0;
-      right: -400px;
-      width: 100%;
-      max-width: 400px;
-      height: 100vh;
-      background-color: var(--white);
-      box-shadow: -5px 0 15px rgba(0, 0, 0, 0.1);
-      z-index: 1050;
-      transition: var(--transition);
-      overflow-y: auto;
-      padding: 20px;
-    }
-
-    .cart-sidebar.open {
-      right: 0;
-    }
-
-    .cart-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0, 0, 0, 0.5);
-      z-index: 1040;
-      display: none;
-    }
-
-    .cart-overlay.show {
-      display: block;
-    }
-
-    .cart-item {
-      display: flex;
-      align-items: center;
-      padding: 15px 0;
-      border-bottom: 1px solid #eee;
-    }
-
-    .cart-item-img {
-      width: 70px;
-      height: 70px;
-      object-fit: cover;
-      border-radius: 8px;
-      margin-right: 15px;
-    }
-
     /* Admin Dashboard */
     .admin-container {
       min-height: 80vh;
@@ -1309,101 +1259,33 @@
   </div>
 </footer>
 
-    <!-- Cart Sidebar -->
-    <div class="cart-overlay" id="cart-overlay"></div>
-    <div class="cart-sidebar" id="cart-sidebar">
-      <div class="d-flex justify-content-between align-items-center mb-4">
-        <h4>Your Cart</h4>
-        <button class="btn-close" id="close-cart"></button>
-      </div>
-      <div id="cart-items">
-        <!-- Cart items will be dynamically added here -->
-      </div>
-      <div class="cart-total mt-4 pt-4 border-top">
-        <div class="d-flex justify-content-between mb-3">
-          <strong>Total:</strong>
-          <strong id="cart-total-price">£0.00</strong>
-        </div>
-        <button class="btn btn-primary w-100" id="checkout-btn">
-          Checkout
-        </button>
-      </div>
-    </div>
-
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/aos@2.3.1/dist/aos.js"></script>
 
     <!-- Base JavaScript -->
     <script>
-       // Cart functionality for all pages
-      let cart = JSON.parse(localStorage.getItem("cart")) || [];
+      function maybeShowWelcomeBackModal() {
+        {% if user.is_authenticated %}
+        const modalKey = "welcomeModalShown_{{ user.id }}";
+        const alreadyShown = sessionStorage.getItem(modalKey) === "true";
+        const modalEl = document.getElementById("welcomeBackModal");
+        if (alreadyShown || !modalEl) return;
 
-      function updateCartCount() {
-        const cartCount = document.querySelector(".cart-count");
-        if (cartCount) {
-          cartCount.textContent = cart.reduce(
-            (total, item) => total + item.quantity,
-            0
-          );
+        const userName = "{{ user.first_name|default:user.username }}";
+        const welcomeMessage = document.getElementById("welcomeUserName");
+        if (welcomeMessage) {
+          welcomeMessage.textContent = `Welcome back, ${userName}!`;
         }
-      }
 
-      // Function to show welcome back modal - FIXED
-      function showWelcomeBackModal(user) {
-        if (user && user.displayName) {
-          // Only show if we have user data
-          setTimeout(() => {
-            const userName = user.displayName || user.email?.split("@")[0] || "Beauty Lover";
-            const welcomeMessage = document.getElementById("welcomeUserName");
-            
-            if (welcomeMessage) {
-              welcomeMessage.textContent = `Welcome back, ${userName}!`;
-              
-              const welcomeModal = new bootstrap.Modal(document.getElementById("welcomeBackModal"));
-              welcomeModal.show();
-            }
-          }, 1500); // Slightly longer delay for better UX
-        }
-      }
-
-      // NEW: Function to check if user just logged in
-      function checkIfJustLoggedIn() {
-        // Check URL for login redirect
-        const urlParams = new URLSearchParams(window.location.search);
-        const justLoggedIn = urlParams.get('just_logged_in') === 'true';
-        
-        // Or check for a session flag from Django
-        const hasLoginFlag = sessionStorage.getItem('justLoggedIn');
-        
-        if (justLoggedIn || hasLoginFlag) {
-          {% if user.is_authenticated %}
-          showWelcomeBackModal({
-            displayName: "{{ user.first_name|default:user.username }}",
-            email: "{{ user.email }}"
-          });
-          // Clear the flag
-          sessionStorage.removeItem('justLoggedIn');
-          {% endif %}
-        }
-      }
-
-      // Cart functions
-      function openCart() {
-        document.getElementById("cart-sidebar").classList.add("open");
-        document.getElementById("cart-overlay").classList.add("show");
-        renderCartItems();
-      }
-
-      function closeCart() {
-        document.getElementById("cart-sidebar").classList.remove("open");
-        document.getElementById("cart-overlay").classList.remove("show");
+        const welcomeModal = new bootstrap.Modal(modalEl);
+        welcomeModal.show();
+        sessionStorage.setItem(modalKey, "true");
+        {% endif %}
       }
 
       // Initialize base functionality
       document.addEventListener("DOMContentLoaded", function () {
-        updateCartCount();
-        
         // Initialize AOS
         AOS.init({
           duration: 800,
@@ -1411,15 +1293,6 @@
           once: true,
           offset: 100,
         });
-
-        // Cart event listeners
-        document.getElementById("cart-icon")?.addEventListener("click", function (e) {
-          e.preventDefault();
-          openCart();
-        });
-
-        document.getElementById("close-cart")?.addEventListener("click", closeCart);
-        document.getElementById("cart-overlay")?.addEventListener("click", closeCart);
 
         // Navbar scroll effect
         window.addEventListener("scroll", function () {
@@ -1431,8 +1304,7 @@
           }
         });
 
-         // Check if user just logged in
-         checkIfJustLoggedIn();
+        maybeShowWelcomeBackModal();
       });
 
       <!-- Add this to your base.html script section -->
@@ -1446,9 +1318,6 @@
         `;
         document.head.appendChild(style);
     </script>
-
-    <!-- In templates/base.html, add this before closing body tag -->
-    {% include 'shop/includes/cart_sidebar.html' %}
 
     {% block extra_js %}{% endblock %}
 </body>

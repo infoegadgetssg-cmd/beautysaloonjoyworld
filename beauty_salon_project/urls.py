@@ -20,6 +20,7 @@ from django.urls import path, include
 from django.conf import settings
 from django.conf.urls.static import static
 from django.views.generic import TemplateView   # Add this
+from booking import views as booking_views
 from . import views 
 
 
@@ -30,6 +31,7 @@ urlpatterns = [
     path('admin-dashboard/', include('admin_dashboard.urls', namespace='admin_dashboard')),
     path('my-account/', include('user_dashboard.urls', namespace='user_dashboard')),
     path('booking/', include('booking.urls')),
+    path('api/events/', booking_views.calendar_events, name='calendar_events'),
     path('services/', include('services.urls')),
     path('shop/', include('shop.urls')),
     path('gallery/', include('gallery.urls')),

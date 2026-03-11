@@ -231,6 +231,12 @@
                         </a>
                     </li>
                     <li>
+                        <a class="nav-link {% if request.resolver_match.url_name == 'bookings_calendar' %}active{% endif %}" 
+                           href="{% url 'admin_dashboard:bookings_calendar' %}">
+                            <i class="fas fa-calendar-alt"></i> Booking Calendar
+                        </a>
+                    </li>
+                    <li>
                         <a class="nav-link {% if request.resolver_match.url_name == 'customers' %}active{% endif %}" 
                            href="{% url 'admin_dashboard:customers' %}">
                             <i class="fas fa-users"></i> Customers
@@ -240,6 +246,12 @@
                         <a class="nav-link {% if request.resolver_match.url_name == 'services' %}active{% endif %}" 
                            href="{% url 'admin_dashboard:services' %}">
                             <i class="fas fa-spa"></i> Services
+                        </a>
+                    </li>
+                    <li>
+                        <a class="nav-link {% if request.resolver_match.url_name == 'dashboard_stylists' %}active{% endif %}"
+                           href="{% url 'services:dashboard_stylists' %}">
+                            <i class="fas fa-cut"></i> Stylists
                         </a>
                     </li>
                     <li>

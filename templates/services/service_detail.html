@@ -1,0 +1,169 @@
+{% extends 'services/base_services.html' %}
+{% load static %}
+
+{% block title %}{{ service.name }} | Joy World Home of Beauty{% endblock %}
+
+{% block extra_css %}
+{{ block.super }}
+<style>
+    .service-detail-wrap {
+        margin-top: 24px;
+    }
+
+    .back-services-btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        border-radius: 999px;
+        padding: 10px 18px;
+        font-weight: 600;
+    }
+
+    .service-hero {
+        height: 350px;
+        background-size: cover;
+        background-position: center;
+        position: relative;
+    }
+
+    .service-hero .overlay {
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.55);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-align: center;
+        padding: 0 16px;
+    }
+
+    .service-hero h1 {
+        color: #fff;
+        font-size: clamp(2rem, 5vw, 2.5rem);
+        margin: 0;
+    }
+
+    .service-details-card {
+        border: 0;
+        border-radius: 16px;
+        box-shadow: 0 12px 35px rgba(0, 0, 0, 0.08);
+        overflow: hidden;
+    }
+
+    .service-category-badge {
+        display: inline-block;
+        padding: 6px 12px;
+        border-radius: 999px;
+        background: rgba(162, 85, 146, 0.12);
+        color: #8a3f79;
+        font-weight: 600;
+        font-size: 0.85rem;
+        margin-bottom: 10px;
+    }
+
+    .service-meta-grid {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+    }
+
+    .service-meta-item {
+        background: #f8f9fb;
+        border-radius: 12px;
+        padding: 14px;
+    }
+
+    .service-cta-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin-top: 24px;
+    }
+
+    .related-card {
+        transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .related-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 22px rgba(0, 0, 0, 0.12);
+    }
+
+    @media (max-width: 767px) {
+        .service-meta-grid {
+            grid-template-columns: 1fr;
+        }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<section class="service-detail-wrap">
+    <div class="container">
+        <a href="{% url 'services:services_list' %}" class="btn btn-outline-secondary back-services-btn">
+            <i class="fas fa-arrow-left"></i>
+            Back to Services
+        </a>
+    </div>
+</section>
+
+<section class="service-hero"
+         style="background-image: url('{% if service.image %}{{ service.image.url }}{% elif service.image_url %}{{ service.image_url }}{% else %}https://res.cloudinary.com/demo/image/upload/v1681234567/service-placeholder.jpg{% endif %}');">
+    <div class="overlay">
+        <h1>{{ service.name }}</h1>
+    </div>
+</section>
+
+<section class="section-padding">
+    <div class="container">
+        <div class="card service-details-card">
+            <div class="card-body p-4 p-md-5">
+                <span class="service-category-badge">{{ service.category.name }}</span>
+                <h2 class="mb-3">{{ service.name }}</h2>
+                <p class="lead mb-3">{{ service.short_description }}</p>
+                <div class="mb-4">{{ service.full_description|linebreaks }}</div>
+
+                <div class="service-meta-grid">
+                    <div class="service-meta-item"><strong>Category:</strong> {{ service.category.name }}</div>
+                    <div class="service-meta-item"><strong>Duration:</strong> {{ service.duration }} minutes</div>
+                    <div class="service-meta-item"><strong>Price:</strong> &pound;{{ service.current_price }}</div>
+                    <div class="service-meta-item">
+                        <strong>Availability:</strong>
+                        {% if service.is_available %}Open for booking{% else %}Not currently available{% endif %}
+                    </div>
+                </div>
+
+                <div class="service-cta-row">
+                    <a href="{% url 'booking:booking' %}?service={{ service.id }}" class="btn btn-primary">
+                        Book This Service
+                    </a>
+                    <a href="{% url 'services:services_list' %}" class="btn btn-outline-primary">
+                        Explore More Services
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+{% if related_services %}
+<section class="section-padding bg-light">
+    <div class="container">
+        <h3 class="mb-4">Related Services</h3>
+        <div class="row">
+            {% for related in related_services %}
+            <div class="col-md-4 mb-3">
+                <div class="card h-100 related-card">
+                    <div class="card-body">
+                        <h5 class="card-title">{{ related.name }}</h5>
+                        <p class="card-text text-muted">{{ related.short_description|truncatechars:90 }}</p>
+                        <a href="{% url 'services:service_detail' related.slug %}" class="btn btn-outline-primary btn-sm">View Details</a>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</section>
+{% endif %}
+{% endblock %}

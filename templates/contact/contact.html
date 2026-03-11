@@ -19,12 +19,14 @@
 
     /* Page Header */
     .page-header {
-        background: linear-gradient(rgba(168, 107, 163, 0.8), rgba(168, 107, 163, 0.8)), 
-                    url('{% static "images/contact-header.jpg" %}') center/cover no-repeat;
+        background: linear-gradient(rgba(168, 107, 163, 0.8), rgba(168, 107, 163, 0.8));
+        background-position: center;
+        background-size: cover;
+        background-repeat: no-repeat;
         padding: 150px 0 80px;
         color: var(--white);
         text-align: center;
-        margin-top: 80px;
+        margin-top: 0;
     }
 
     .page-header h1 {
@@ -269,7 +271,7 @@
     /* Responsive */
     @media (max-width: 768px) {
         .page-header h1 { font-size: 2.5rem; }
-        .page-header { padding: 130px 0 60px; margin-top: 70px; }
+        .page-header { padding: 130px 0 60px; margin-top: 0; }
         .contact-info, .contact-form { padding: 30px 20px; }
         .quick-contact { flex-direction: column; }
         .map-container { height: 350px; }
@@ -280,17 +282,21 @@
 
 {% block content %}
 <!-- Page Header -->
-<section class="page-header" data-aos="fade-up" data-aos-duration="800">
-    <div class="container">
+{% with hero_image_url=hero_image_url|default:"https://res.cloudinary.com/dlnji0lml/image/upload/v1772736934/Capturejoyworld_image_l1xspb.png" %}
+<section class="page-header" style="background-image: url('{{ hero_image_url }}');" data-aos="fade-up" data-aos-duration="800">
+    <div class="container text-center">
         <h1 data-aos="fade-down" data-aos-delay="200" data-aos-duration="1000">Get In Touch</h1>
-        <nav aria-label="breadcrumb" data-aos="fade-up" data-aos-delay="200">
-            <ol class="breadcrumb">
-                <li class="breadcrumb-item"><a href="{% url 'index' %}">Home</a></li>
-                {% block breadcrumb %}<li class="breadcrumb-item active">Contact</li>{% endblock %}
+        <nav aria-label="breadcrumb" class="d-flex justify-content-center align-items-center mt-3" data-aos="fade-up" data-aos-delay="200">
+            <ol class="breadcrumb text-white justify-content-center mb-0">
+                <li class="breadcrumb-item">
+                    <a href="{% url 'index' %}" class="text-white">Home</a>
+                </li>
+                {% block breadcrumb %}<li class="breadcrumb-item active text-white" aria-current="page">Contact</li>{% endblock %}
             </ol>
         </nav>
     </div>
 </section>
+{% endwith %}
 
 <!-- Contact Section -->
 <section class="contact-section">

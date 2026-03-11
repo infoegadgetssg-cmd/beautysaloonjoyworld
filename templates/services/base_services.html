@@ -6,8 +6,10 @@
 <style>
     /* Services-specific styles */
     .services-hero {
-        background: linear-gradient(rgba(168, 107, 163, 0.9), rgba(168, 107, 163, 0.9)),
-                    url('https://res.cloudinary.com/demo/image/upload/v1681234567/services-header.jpg') center/cover no-repeat;
+        background: linear-gradient(rgba(168, 107, 163, 0.9), rgba(168, 107, 163, 0.9));
+        background-position: center;
+        background-size: cover;
+        background-repeat: no-repeat;
         padding: 180px 0 100px;
         color: white;
         text-align: center;
@@ -57,8 +59,8 @@
 
     .category-nav .nav-link.active,
     .category-nav .nav-link:hover {
-        background: var(--primary-dark);
-        color: white;
+        background-color: var(--primary-dark);
+        color: #fff !important;
         border-color: var(--primary-dark);
     }
 
@@ -90,6 +92,43 @@
 
     .service-card-body {
         padding: 25px;
+    }
+
+    .service-card.service-card-bg {
+        position: relative;
+        background-size: cover;
+        background-position: center;
+        background-repeat: no-repeat;
+        min-height: 340px;
+        color: #fff;
+        display: flex;
+        align-items: flex-end;
+    }
+
+    .service-card.service-card-bg::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background: rgba(0, 0, 0, 0.55);
+        z-index: 1;
+    }
+
+    .service-card-content {
+        position: relative;
+        z-index: 2;
+        width: 100%;
+    }
+
+    .service-card.service-card-bg .text-muted {
+        color: rgba(255, 255, 255, 0.85) !important;
+    }
+
+    .service-card.service-card-bg .service-price {
+        color: #fff;
+    }
+
+    .service-card.service-card-bg .service-price .special-price {
+        color: #ffd7d7;
     }
 
     .service-price {

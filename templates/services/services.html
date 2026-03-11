@@ -4,9 +4,54 @@
 
 {% block title %}Our Services | Joy World Home of Beauty{% endblock %}
 
+{% block extra_css %}
+{{ block.super }}
+<style>
+    .services-grid {
+        align-items: stretch;
+    }
+
+    .services-grid > div {
+        display: flex;
+    }
+
+    .services-grid .service-card {
+        width: 100%;
+        min-height: 300px;
+        border-radius: 14px;
+        transition: transform 0.25s ease, box-shadow 0.25s ease;
+    }
+
+    .services-grid .service-card:hover {
+        transform: translateY(-6px);
+        box-shadow: 0 18px 30px rgba(0, 0, 0, 0.16);
+    }
+
+    .service-card-content {
+        padding: 20px;
+    }
+
+    .service-category-tag {
+        border-radius: 999px;
+        padding: 6px 12px;
+        font-weight: 600;
+        background-color: rgba(255, 255, 255, 0.2) !important;
+        color: #fff !important;
+    }
+
+    .service-card-actions {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <!-- Page Header -->
-<section class="services-hero">
+{% with hero_image_url=hero_image_url|default:"https://res.cloudinary.com/dlnji0lml/image/upload/v1772736934/Capturejoyworld_image_l1xspb.png" %}
+<section class="services-hero" style="background-image: url('{{ hero_image_url }}');">
     <div class="container">
         <h1 data-aos="fade-down">Our Services</h1>
         <p data-aos="fade-up" data-aos-delay="200">
@@ -17,20 +62,21 @@
         </div>
     </div>
 </section>
+{% endwith %}
 
 <!-- Category Navigation -->
 <nav class="category-nav" id="categoryNav">
     <div class="container">
         <ul class="nav">
             <li class="nav-item">
-                <a class="nav-link {% if current_category == 'all' %}active{% endif %}" 
+                <a class="nav-link service-category {% if current_category == 'all' %}active{% endif %}" data-category="all"
                    href="{% url 'services:services_list' %}">
                     All Services
                 </a>
             </li>
             {% for category in categories %}
             <li class="nav-item">
-                <a class="nav-link {% if current_category == category.slug %}active{% endif %}" 
+                <a class="nav-link service-category {% if current_category == category.slug %}active{% endif %}" data-category="{{ category.slug }}"
                    href="{% url 'services:services_by_category' category.slug %}">
                     {{ category.name }}
                 </a>
@@ -51,17 +97,17 @@
         <!-- Search and Filter -->
         <div class="row mb-4">
             <div class="col-md-8">
-                <form method="get" class="row g-2">
+                <form method="get" class="row g-2" id="servicesFilterForm">
                     <div class="col-md-4">
-                        <input type="text" name="search" class="form-control" 
+                        <input type="text" name="search" id="servicesSearchInput" class="form-control" 
                                placeholder="Search services..." value="{{ request.GET.search }}">
                     </div>
                     <div class="col-md-3">
-                        <input type="number" name="price_min" class="form-control" 
+                        <input type="number" name="price_min" id="servicesPriceMin" class="form-control" 
                                placeholder="Min price" value="{{ request.GET.price_min }}">
                     </div>
                     <div class="col-md-3">
-                        <input type="number" name="price_max" class="form-control" 
+                        <input type="number" name="price_max" id="servicesPriceMax" class="form-control" 
                                placeholder="Max price" value="{{ request.GET.price_max }}">
                     </div>
                     <div class="col-md-2">
@@ -70,34 +116,23 @@
                 </form>
             </div>
             <div class="col-md-4 text-md-end">
-                <p class="mb-0 mt-2">{{ total_services }} services found</p>
+                <p class="mb-0 mt-2"><span id="servicesCount">{{ total_services }}</span> services found</p>
             </div>
         </div>
 
         <!-- Services Grid -->
-        {% if services %}
-        <div class="row">
+        <div class="row services-grid" id="servicesContainer">
             {% for service in services %}
             <div class="col-lg-4 col-md-6 mb-4" data-aos="fade-up" data-aos-delay="{{ forloop.counter0|add:'100' }}">
-                <div class="service-card">
+                <div class="service-card service-card-bg"
+                     style="background-image: url('{% if service.image %}{{ service.image.url }}{% elif service.image_url %}{{ service.image_url }}{% else %}https://res.cloudinary.com/demo/image/upload/v1681234567/service-placeholder.jpg{% endif %}');">
                     {% if service.is_on_special %}
                     <span class="service-badge">Special Offer</span>
                     {% endif %}
-                    
-                    <div class="position-relative overflow-hidden">
-                        {% if service.image %}
-                        <img src="{{ service.image.url }}" alt="{{ service.name }}" class="service-card-img">
-                        {% elif service.image_url %}
-                        <img src="{{ service.image_url }}" alt="{{ service.name }}" class="service-card-img">
-                        {% else %}
-                        <img src="https://res.cloudinary.com/demo/image/upload/v1681234567/service-placeholder.jpg" 
-                             alt="{{ service.name }}" class="service-card-img">
-                        {% endif %}
-                    </div>
-                    
-                    <div class="service-card-body">
+
+                    <div class="service-card-body service-card-content">
                         <div class="d-flex justify-content-between align-items-start mb-2">
-                            <span class="badge bg-primary">{{ service.category.name }}</span>
+                            <span class="badge service-category-tag">{{ service.category.name }}</span>
                             <span class="text-muted">{{ service.formatted_duration }}</span>
                         </div>
                         
@@ -121,7 +156,7 @@
                         </ul>
                         {% endif %}
                         
-                        <div class="d-flex justify-content-between align-items-center">
+                        <div class="service-card-actions">
                             <a href="{% url 'services:service_detail' service.slug %}" 
                                class="btn btn-outline-primary btn-sm">
                                 View Details
@@ -139,7 +174,7 @@
 
         <!-- Pagination -->
         {% if services.has_other_pages %}
-        <nav aria-label="Services navigation">
+        <nav aria-label="Services navigation" id="servicesPagination">
             <ul class="pagination justify-content-center">
                 {% if services.has_previous %}
                 <li class="page-item">
@@ -172,14 +207,6 @@
                 {% endif %}
             </ul>
         </nav>
-        {% endif %}
-        
-        {% else %}
-        <div class="text-center py-5" data-aos="fade-up">
-            <i class="fas fa-spa fa-4x text-muted mb-3"></i>
-            <h4 class="text-muted">No services found</h4>
-            <p class="text-muted">Try adjusting your filters or search terms</p>
-        </div>
         {% endif %}
     </div>
 </section>
@@ -251,17 +278,117 @@
             }
         });
 
-        // Filter form submission with loading
-        const filterForm = document.querySelector('form[method="get"]');
-        if (filterForm) {
-            filterForm.addEventListener('submit', function() {
-                const submitBtn = this.querySelector('button[type="submit"]');
-                if (submitBtn) {
-                    submitBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Filtering...';
-                    submitBtn.disabled = true;
+        const filterForm = document.getElementById('servicesFilterForm');
+        const searchInput = document.getElementById('servicesSearchInput');
+        const priceMinInput = document.getElementById('servicesPriceMin');
+        const priceMaxInput = document.getElementById('servicesPriceMax');
+        const servicesContainer = document.getElementById('servicesContainer');
+        const servicesCount = document.getElementById('servicesCount');
+        const pagination = document.getElementById('servicesPagination');
+        const categoryLinks = document.querySelectorAll('.service-category');
+        let currentCategory = document.querySelector('.service-category.active')?.dataset.category || 'all';
+        let searchDebounce = null;
+
+        function renderServices(services) {
+            if (!servicesContainer) return;
+
+            if (!services.length) {
+                servicesContainer.innerHTML = `
+                    <div class="col-12">
+                        <div class="text-center py-5">
+                            <i class="fas fa-spa fa-4x text-muted mb-3"></i>
+                            <h4 class="text-muted">No services found</h4>
+                            <p class="text-muted">Try adjusting your filters or search terms</p>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            servicesContainer.innerHTML = services.map((service) => {
+                const imageUrl = service.image_url || 'https://res.cloudinary.com/demo/image/upload/v1681234567/service-placeholder.jpg';
+                const badge = service.is_on_special ? '<span class="service-badge">Special Offer</span>' : '';
+                const priceHtml = service.is_on_special && service.special_price
+                    ? `<span class="special-price">&pound;${service.regular_price.toFixed(2)}</span><span>&pound;${service.special_price.toFixed(2)}</span>`
+                    : `<span>&pound;${Number(service.price).toFixed(2)}</span>`;
+                const serviceDetailUrl = "{% url 'services:service_detail' 'service-slug-placeholder' %}".replace('service-slug-placeholder', service.slug);
+                const bookingUrl = "{% url 'booking:booking' %}?service=${service.id}";
+
+                return `
+                    <div class="col-lg-4 col-md-6 mb-4">
+                        <div class="service-card service-card-bg" style="background-image: url('${imageUrl}')">
+                            ${badge}
+                            <div class="service-card-body service-card-content">
+                                <div class="d-flex justify-content-between align-items-start mb-2">
+                                    <span class="badge service-category-tag">${service.category}</span>
+                                    <span class="text-muted">${service.duration}</span>
+                                </div>
+                                <h4 class="mb-2">${service.name}</h4>
+                                <p class="text-muted mb-3">${service.short_description}</p>
+                                <div class="service-price mb-3">${priceHtml}</div>
+                                <div class="service-card-actions">
+                                    <a href="${serviceDetailUrl}" class="btn btn-outline-primary btn-sm">View Details</a>
+                                    <a href="${bookingUrl}" class="btn btn-primary btn-sm">Book Now</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        async function loadServices() {
+            const params = new URLSearchParams({
+                q: searchInput?.value || '',
+                category: currentCategory || 'all',
+                price_min: priceMinInput?.value || '',
+                price_max: priceMaxInput?.value || ''
+            });
+
+            try {
+                const response = await fetch(`/services/api/services/?${params.toString()}`, {
+                    headers: { 'X-Requested-With': 'XMLHttpRequest' }
+                });
+                const data = await response.json();
+                if (!response.ok || !data.success) {
+                    throw new Error('Failed to load services');
                 }
+
+                renderServices(data.services || []);
+                if (servicesCount) servicesCount.textContent = data.count ?? 0;
+                if (pagination) pagination.style.display = 'none';
+            } catch (error) {
+                // Fallback to normal server-side behavior if AJAX fails.
+                if (filterForm) filterForm.submit();
+            }
+        }
+
+        if (filterForm) {
+            filterForm.addEventListener('submit', function(event) {
+                event.preventDefault();
+                loadServices();
             });
         }
+
+        if (searchInput) {
+            searchInput.addEventListener('input', function() {
+                clearTimeout(searchDebounce);
+                searchDebounce = setTimeout(loadServices, 300);
+            });
+        }
+
+        categoryLinks.forEach((link) => {
+            link.addEventListener('click', function(event) {
+                event.preventDefault();
+                categoryLinks.forEach((item) => item.classList.remove('active'));
+                this.classList.add('active');
+                currentCategory = this.dataset.category || 'all';
+                loadServices();
+            });
+        });
+
+        // Initial dynamic load so services are visible immediately without user interaction.
+        loadServices();
 
         // Initialize AOS animations
         AOS.init({

@@ -21,9 +21,10 @@
         background: linear-gradient(
             rgba(168, 107, 163, 0.8),
             rgba(168, 107, 163, 0.8)
-        ),
-        url("https://res.cloudinary.com/demo/image/upload/v1681234567/booking-header.jpg")
-            center/cover no-repeat;
+        );
+        background-position: center;
+        background-size: cover;
+        background-repeat: no-repeat;
         padding: 120px 0 80px;
         color: var(--white);
         text-align: center;
@@ -58,6 +59,8 @@
         border-radius: 15px;
         box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08);
         overflow: hidden;
+        max-width: 1120px;
+        margin: 0 auto;
     }
 
     .booking-sidebar {
@@ -349,12 +352,26 @@
     input[type="checkbox"] {
         display: none;
     }
+
+    .policy-checkbox input[type="checkbox"] {
+        display: inline-block;
+        width: 1rem;
+        height: 1rem;
+        margin-right: 8px;
+        vertical-align: middle;
+    }
+
+    .policy-checkbox label {
+        display: inline;
+        margin: 0;
+    }
 </style>
 {% endblock %}
 
 {% block content %}
 <!-- Page Header -->
-<section class="page-header">
+{% with hero_image_url=hero_image_url|default:"https://res.cloudinary.com/dlnji0lml/image/upload/v1772736934/Capturejoyworld_image_l1xspb.png" %}
+<section class="page-header" style="background-image: url('{{ hero_image_url }}');">
     <div class="container">
         <h1 data-aos="fade-up" data-aos-delay="100">Book Your Appointment</h1>
         <nav aria-label="breadcrumb" data-aos="fade-up" data-aos-delay="200">
@@ -365,6 +382,7 @@
         </nav>
     </div>
 </section>
+{% endwith %}
 
 <!-- Booking Section -->
 <section class="booking-section">
@@ -515,37 +533,15 @@
                                     <h3 class="form-section-title" data-aos="fade-left" data-aos-delay="1800">
                                         Preferred Stylist (Optional)
                                     </h3>
-                                    <div class="form-group">
-                                        <div class="stylist-option" data-stylist="" id="any-stylist">
-                                            <div class="stylist-info">
-                                                <h5>Any Available Stylist</h5>
-                                                <p class="stylist-specialty">
-                                                    We'll assign the best available specialist for your service
-                                                </p>
-                                            </div>
-                                        </div>
-
-                                        {% for stylist in stylists %}
-                                        <div class="stylist-option" 
-                                             data-stylist="{{ stylist.id }}" 
-                                             id="stylist-{{ stylist.id }}">
-                                            {% if stylist.image %}
-                                            <img src="{{ stylist.image.url }}" 
-                                                 alt="{{ stylist.name }}"
-                                                 class="stylist-img">
-                                            {% else %}
-                                            <img src="https://via.placeholder.com/60x60?text={{ stylist.name|first }}"
-                                                 alt="{{ stylist.name }}"
-                                                 class="stylist-img">
-                                            {% endif %}
-                                            <div class="stylist-info">
-                                                <h5>{{ stylist.name }}</h5>
-                                                <p class="stylist-specialty">{{ stylist.specialty }}</p>
-                                            </div>
-                                        </div>
-                                        {% endfor %}
+                                    <div class="form-group" data-aos="fade-left" data-aos-delay="1900">
+                                        <label for="{{ form.stylist.id_for_label }}" class="form-label">
+                                            Select Preferred Stylist
+                                        </label>
+                                        {{ form.stylist }}
+                                        {% if form.stylist.errors %}
+                                        <div class="errorlist">{{ form.stylist.errors }}</div>
+                                        {% endif %}
                                     </div>
-                                    <input type="hidden" id="id_stylist" name="stylist" value="">
                                 </div>
 
                                 <!-- Date & Time -->
@@ -622,15 +618,27 @@
 
                                 <!-- Submit Button -->
                                 <div class="form-section text-center" data-aos="fade-up" data-aos-delay="4400">
+                                    <div class="policy-checkbox mb-3 text-start">
+                                        <input type="checkbox"
+                                               id="agreeCancellationPolicy"
+                                               name="agree_cancellation_policy"
+                                               required
+                                               {% if form.data.agree_cancellation_policy %}checked{% endif %}>
+                                        <label for="agreeCancellationPolicy">
+                                            By booking, I agree to the
+                                            <a href="{% url 'booking:cancellation_policy' %}" target="_blank" rel="noopener">
+                                                Cancellation Policy
+                                            </a>
+                                        </label>
+                                        {% if form.agree_cancellation_policy.errors %}
+                                        <div class="errorlist">{{ form.agree_cancellation_policy.errors }}</div>
+                                        {% endif %}
+                                    </div>
                                     <button type="submit" class="btn btn-primary btn-lg" id="submitBooking">
                                         <span class="spinner-border spinner-border-sm d-none" 
                                               role="status" aria-hidden="true"></span>
                                         Confirm Booking
                                     </button>
-                                    <p class="mt-3 text-muted" data-aos="fade-up" data-aos-delay="4500">
-                                        By booking, you agree to our
-                                        <a href="#">cancellation policy</a>
-                                    </p>
                                 </div>
                             </form>
                         </div>
@@ -696,7 +704,7 @@
 
         // Set minimum date to today
         const today = new Date().toISOString().split('T')[0];
-        const dateInput = document.getElementById('id_date');
+        const dateInput = document.getElementById('appointmentDate') || document.getElementById('id_date');
         if (dateInput) {
             dateInput.min = today;
             // Set default to tomorrow
@@ -729,12 +737,12 @@
         });
 
         // Form change listeners
-        const serviceTypeSelect = document.getElementById('id_service');
+        const serviceTypeSelect = document.getElementById('serviceType') || document.getElementById('id_service');
         if (serviceTypeSelect) {
             serviceTypeSelect.addEventListener('change', updateBookingSummary);
         }
 
-        const appointmentDateInput = document.getElementById('id_date');
+        const appointmentDateInput = document.getElementById('appointmentDate') || document.getElementById('id_date');
         if (appointmentDateInput) {
             appointmentDateInput.addEventListener('change', updateBookingSummary);
         }
@@ -758,6 +766,13 @@
                 if (!timeInput.value) {
                     e.preventDefault();
                     alert('Please select a time slot.');
+                    return;
+                }
+
+                const selectedDateInput = document.getElementById('appointmentDate') || document.getElementById('id_date');
+                if (selectedDateInput && selectedDateInput.value && selectedDateInput.value < today) {
+                    e.preventDefault();
+                    alert('Please choose today or a future date.');
                     return;
                 }
 
@@ -837,3 +852,4 @@
     }
 </script>
 {% endblock %}
+

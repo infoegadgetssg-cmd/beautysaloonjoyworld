@@ -53,9 +53,29 @@
                     Out of Stock
                 </button>
             {% endif %}
-            <button class="btn-quick-view" data-product-id="{{ product.id }}">
+            <button
+                class="btn-quick-view"
+                data-product-id="{{ product.id }}"
+                data-product-slug="{{ product.slug|default:''|escape }}"
+                data-product-name="{{ product.name|escape }}"
+                data-product-price="{{ product.price }}"
+                data-product-description="{{ product.description|default:product.short_description|striptags|escape }}"
+                data-product-image="{{ product.get_main_image_url|escape }}"
+                data-product-category="{{ product.category.name|default:'Uncategorized'|escape }}"
+                data-product-url="{{ product.get_absolute_url|escape }}"
+            >
                 <i class="fas fa-eye"></i>
             </button>
+            {% if user.is_authenticated %}
+            <button
+                type="button"
+                class="btn-quick-view btn-wishlist"
+                data-url="{% url 'shop:toggle_wishlist' product.id %}"
+                title="Toggle Wishlist"
+            >
+                <i class="fas fa-heart"></i>
+            </button>
+            {% endif %}
         </div>
     </div>
 </div>

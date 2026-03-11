@@ -1,6 +1,7 @@
 # dashboard/forms.py
 from django import forms
 from django.contrib.auth.forms import AuthenticationForm
+from django.utils.text import slugify
 from services.models import Stylist
 from booking.models import AdditionalService
 from shop.models import Product, ProductCategory
@@ -25,11 +26,18 @@ class AdminLoginForm(AuthenticationForm):
     )
 
 class ServiceForm(forms.ModelForm):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        if 'display_order' in self.fields:
+            self.fields['display_order'].required = False
+            self.fields['display_order'].initial = 0
+
     class Meta:
         model = Service
         fields = ['name', 'short_description', 'full_description', 'category', 
                  'price', 'duration', 'image', 'is_active', 'is_on_special', 
-                 'special_price', 'special_end_date', 'display_order', 'is_available']
+                 'special_price', 'special_end_date', 'display_order', 'is_available',
+                 'service_color']
         widgets = {
             'name': forms.TextInput(attrs={
                 'class': 'form-control', 
@@ -100,7 +108,27 @@ class ServiceForm(forms.ModelForm):
                 'id': 'serviceActive',
                 'checked': 'checked'
             }),
+            'service_color': forms.Select(attrs={
+                'class': 'form-select',
+                'id': 'serviceColor'
+            }),
         }
+
+    def save(self, commit=True):
+        service = super().save(commit=False)
+        if service.display_order is None:
+            service.display_order = 0
+        if not service.slug:
+            base_slug = slugify(service.name) or 'service'
+            slug = base_slug
+            counter = 1
+            while Service.objects.filter(slug=slug).exclude(pk=service.pk).exists():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+            service.slug = slug
+        if commit:
+            service.save()
+        return service
 
 class ProductForm(forms.ModelForm):
     # Add image field manually since your model uses main_image
@@ -131,6 +159,15 @@ class ProductForm(forms.ModelForm):
     
     def save(self, commit=True):
         product = super().save(commit=False)
+        # Ensure slug is always set for product detail URLs.
+        if not product.slug:
+            base_slug = slugify(product.name) or 'product'
+            slug = base_slug
+            counter = 1
+            while Product.objects.filter(slug=slug).exclude(pk=product.pk).exists():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+            product.slug = slug
         # Handle image upload - map to main_image field
         if 'image' in self.cleaned_data and self.cleaned_data['image']:
             product.main_image = self.cleaned_data['image']

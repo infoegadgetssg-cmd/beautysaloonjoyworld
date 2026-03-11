@@ -43,7 +43,7 @@
     
     <!-- Mark All as Read -->
     <div class="mt-4">
-        <form method="post" action="{% url 'mark_all_read' %}">
+        <form method="post" action="{% url 'user_dashboard:mark_all_read' %}">
             {% csrf_token %}
             <button type="submit" class="btn btn-outline-primary">
                 <i class="fas fa-check-double me-2"></i>Mark All as Read

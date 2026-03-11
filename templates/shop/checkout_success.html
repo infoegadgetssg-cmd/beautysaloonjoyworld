@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+
+{% block title %}Checkout Success | Joy World Beauty Shop{% endblock %}
+
+{% block content %}
+<section class="section-padding">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card shadow-sm border-0">
+                    <div class="card-body p-5 text-center">
+                        <h1 class="mb-3">Order Confirmed</h1>
+                        <p class="text-muted mb-4">
+                            Your order has been received successfully.
+                        </p>
+
+                        {% if order %}
+                        <div class="mb-4">
+                            <h5 class="mb-1">Order Number</h5>
+                            <p class="fs-4 mb-0">#{{ order.id }}</p>
+                        </div>
+                        <div class="mb-4 text-start mx-auto" style="max-width: 420px;">
+                            <div class="d-flex justify-content-between border-bottom py-2">
+                                <strong>Status</strong>
+                                <span>{{ order.status|title }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between border-bottom py-2">
+                                <strong>Payment Method</strong>
+                                <span>{{ order.payment_method|title }}</span>
+                            </div>
+                            <div class="d-flex justify-content-between border-bottom py-2">
+                                <strong>Total</strong>
+                                <span>&pound;{{ order.total_amount }}</span>
+                            </div>
+                            {% for item in order.items.all %}
+                            <div class="d-flex justify-content-between py-2">
+                                <span>{{ item.product.name }} x{{ item.quantity }}</span>
+                                <span>&pound;{{ item.total_price }}</span>
+                            </div>
+                            {% endfor %}
+                        </div>
+                        {% endif %}
+
+                        <a href="{% url 'shop:shop' %}" class="btn btn-primary">
+                            Continue Shopping
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

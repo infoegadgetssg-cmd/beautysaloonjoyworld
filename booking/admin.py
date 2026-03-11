@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Booking, AdditionalService, BookingAdditionalService
+from .models import Booking, AdditionalService, BookingAdditionalService, StylistAvailability
 
 
 @admin.register(Booking)
@@ -21,3 +21,10 @@ class AdditionalServiceAdmin(admin.ModelAdmin):
 class BookingAdditionalServiceAdmin(admin.ModelAdmin):
     list_display = ['booking', 'additional_service', 'quantity']
     list_filter = ['additional_service']
+
+
+@admin.register(StylistAvailability)
+class StylistAvailabilityAdmin(admin.ModelAdmin):
+    list_display = ['stylist', 'day_of_week', 'start_time', 'end_time', 'is_available']
+    list_filter = ['day_of_week', 'is_available', 'stylist']
+    search_fields = ['stylist__name']

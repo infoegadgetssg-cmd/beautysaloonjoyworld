@@ -12,15 +12,38 @@ from accounts.models import CustomUser
 from booking.models import Booking
 from services.models import Stylist
 from services.models import Service
-from shop.models import Product, Order, OrderItem
+from shop.models import Product, Order, OrderItem, Wishlist
 from .models import UserFavorite, UserNotification, UserLoyalty, LoyaltyProgram
 from .forms import UserProfileForm
 from django.core.paginator import Paginator
 
 
+def _expire_overdue_booking_payments():
+    overdue_bookings = Booking.objects.filter(
+        status='awaiting_payment',
+        deposit_paid=False,
+        payment_deadline__isnull=False,
+        payment_deadline__lt=timezone.now()
+    )
+    for booking in overdue_bookings:
+        booking.status = 'cancelled'
+        booking.save()
+        UserNotification.objects.create(
+            user=booking.user,
+            title='Booking Cancelled',
+            message='Your booking was cancelled because deposit payment was not completed within 48 hours.',
+            notification_type='booking_update'
+        )
+
+
+def _favorites_count(user):
+    return Wishlist.objects.filter(user=user).count()
+
+
 @login_required
 def user_dashboard(request):
     """Main user dashboard view"""
+    _expire_overdue_booking_payments()
     user = request.user
     
     # Get user bookings
@@ -31,7 +54,7 @@ def user_dashboard(request):
     today = timezone.now().date()
     upcoming_bookings = all_bookings.filter(
         date__gte=today,
-        status__in=['pending', 'confirmed']
+        status__in=['pending', 'awaiting_payment', 'confirmed']
     )[:5]
     
     # Get user orders
@@ -84,6 +107,7 @@ def user_dashboard(request):
         'total_bookings': total_bookings,
         'total_orders': total_orders,
         'total_spent': total_spent,
+        'favorites_count': _favorites_count(user),
     }
     
     return render(request, 'user_dashboard/dashboard.html', context)
@@ -91,6 +115,7 @@ def user_dashboard(request):
 @login_required
 def user_bookings(request):
     """User's booking history"""
+    _expire_overdue_booking_payments()
     user = request.user
     bookings_list = Booking.objects.filter(user=user).select_related('service', 'stylist').order_by('-date', '-time')
 
@@ -102,6 +127,7 @@ def user_bookings(request):
     context = {
         'bookings': bookings,
         'total_bookings': paginator.count,
+        'favorites_count': _favorites_count(user),
     }
     
     return render(request, 'user_dashboard/bookings.html', context)
@@ -121,6 +147,7 @@ def user_orders(request):
     context = {
         'orders': orders,
         'total_orders': paginator.count,
+        'favorites_count': _favorites_count(user),
     }
     
     return render(request, 'user_dashboard/orders.html', context)
@@ -138,9 +165,11 @@ def mark_all_read(request):
 def user_profile(request):
     """User profile editing"""
     user = request.user
+    user_loyalty, _ = UserLoyalty.objects.get_or_create(user=user)
+    unread_notifications = UserNotification.objects.filter(user=user, is_read=False).count()
     
     if request.method == 'POST':
-        form = UserProfileForm(request.POST, instance=user)
+        form = UserProfileForm(request.POST, request.FILES, instance=user)
         if form.is_valid():
             form.save()
             messages.success(request, 'Profile updated successfully!')
@@ -150,6 +179,9 @@ def user_profile(request):
     
     context = {
         'form': form,
+        'user_loyalty': user_loyalty,
+        'unread_notifications': unread_notifications,
+        'favorites_count': _favorites_count(user),
     }
     
     return render(request, 'user_dashboard/profile.html', context)
@@ -160,10 +192,13 @@ def user_favorites(request):
     user = request.user
     favorite_services = UserFavorite.objects.filter(user=user, service__isnull=False).select_related('service')
     favorite_products = UserFavorite.objects.filter(user=user, product__isnull=False).select_related('product')
+    wishlist_items = Wishlist.objects.filter(user=user).select_related('product', 'product__category')
     
     context = {
         'favorite_services': favorite_services,
         'favorite_products': favorite_products,
+        'wishlist_items': wishlist_items,
+        'favorites_count': _favorites_count(user),
     }
     
     return render(request, 'user_dashboard/favorites.html', context)
@@ -212,15 +247,19 @@ def remove_from_favorites(request, favorite_id):
 @login_required
 def user_notifications(request):
     """User notifications"""
-    notifications = UserNotification.objects.filter(user=request.user).order_by('-created_at')
+    notifications_list = UserNotification.objects.filter(user=request.user).order_by('-created_at')
+    paginator = Paginator(notifications_list, 10)
+    page_number = request.GET.get('page')
+    notifications = paginator.get_page(page_number)
     
     # Mark as read
-    unread_notifications = notifications.filter(is_read=False)
+    unread_notifications = notifications_list.filter(is_read=False)
     if unread_notifications.exists():
         unread_notifications.update(is_read=True)
     
     context = {
         'notifications': notifications,
+        'favorites_count': _favorites_count(request.user),
     }
     
     return render(request, 'user_dashboard/notifications.html', context)
@@ -238,8 +277,10 @@ def cancel_booking(request, booking_id):
     """Cancel a booking"""
     booking = get_object_or_404(Booking, id=booking_id, user=request.user)
     
-    if booking.status in ['pending', 'confirmed']:
+    if booking.status in ['pending', 'awaiting_payment', 'confirmed']:
         booking.status = 'cancelled'
+        if booking.payment_status == "PAID":
+            booking.refund_status = Booking.REFUND_PENDING
         booking.save()
         
         # Create notification for user

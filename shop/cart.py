@@ -8,7 +8,7 @@ def get_cart_for_request(request):
     
     if request.user.is_authenticated:
         # Try to get existing cart for user
-        cart = Cart.objects.filter(user=request.user).first()
+        cart = Cart.objects.filter(user=request.user).order_by('-updated_at').first()
         
         # If user has no cart but has session cart, merge them
         if not cart and 'cart_id' in request.session:
@@ -23,9 +23,7 @@ def get_cart_for_request(request):
     else:
         # For anonymous users, use session
         if 'cart_id' in request.session:
-            cart = Cart.objects.filter(
-                session_key=request.session.session_key
-            ).first()
+            cart = Cart.objects.filter(id=request.session['cart_id']).first()
     
     # Create new cart if none exists
     if not cart:

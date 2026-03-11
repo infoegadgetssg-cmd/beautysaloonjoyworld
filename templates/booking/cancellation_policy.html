@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+
+{% block title %}Cancellation Policy | Joy World Home of Beauty{% endblock %}
+
+{% block content %}
+<section class="section-padding">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-4 p-md-5">
+                        <h1 class="h3 mb-3">Cancellation Policy</h1>
+                        <p class="text-muted mb-4">
+                            Please review our cancellation terms before confirming your appointment.
+                        </p>
+                        <ul class="mb-4">
+                            <li>Cancellations must be made at least 24 hours before your appointment time.</li>
+                            <li>Late cancellations may incur a service charge.</li>
+                            <li>No-shows may be charged up to the full service amount.</li>
+                            <li>If you are running late, contact us as soon as possible.</li>
+                        </ul>
+                        <a href="{% url 'booking:booking' %}" class="btn btn-primary">Back to Booking</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

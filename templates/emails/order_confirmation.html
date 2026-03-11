@@ -1,0 +1,12 @@
+<h2>Order Confirmation</h2>
+<p>Hello {{ customer_name }},</p>
+<p>Your order <strong>#{{ order.id }}</strong> has been received.</p>
+<p>Payment Method: {{ order.payment_method|title }}</p>
+<p>Total: £{{ order.total_amount }}</p>
+<p>Items:</p>
+<ul>
+{% for item in order_items %}
+  <li>{{ item.product.name }} x {{ item.quantity }} — £{{ item.total_price }}</li>
+{% endfor %}
+</ul>
+<p>Thank you for shopping with us.</p>

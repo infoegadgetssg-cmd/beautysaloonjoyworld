@@ -1,0 +1,8 @@
+﻿<h2>New Order Received</h2>
+<p>Order ID: <strong>#{{ order.id }}</strong></p>
+<p>Customer: {{ customer_name }}</p>
+<p>Customer Email: {{ order.user.email }}</p>
+<p>Total: &pound;{{ order.total_amount }}</p>
+<p>Payment Method: {{ order.payment_method|title }}</p>
+<p>Status: {{ order.status|title }}</p>
+<p>Date/Time: {{ order.created_at|date:"Y-m-d H:i:s" }}</p>

@@ -1,6 +1,7 @@
 # services/models.py
 from django.db import models
 from django.conf import settings
+from django.utils.text import slugify
 
 class ServiceCategory(models.Model):
     """Categories for beauty services"""
@@ -34,6 +35,19 @@ class Service(models.Model):
     features = models.JSONField(default=list, help_text="List of features as JSON array")
     is_active = models.BooleanField(default=True)
     display_order = models.IntegerField(default=0)
+    SERVICE_COLORS = [
+        ('#3b82f6', 'Blue'),
+        ('#9333ea', 'Purple'),
+        ('#10b981', 'Green'),
+        ('#f59e0b', 'Orange'),
+        ('#ef4444', 'Red'),
+        ('#06b6d4', 'Cyan'),
+        ('#ec4899', 'Pink'),
+        ('#84cc16', 'Lime'),
+        ('#6366f1', 'Indigo'),
+        ('#64748b', 'Gray'),
+    ]
+    service_color = models.CharField(max_length=7, choices=SERVICE_COLORS, default='#3b82f6')
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     
@@ -71,6 +85,17 @@ class Service(models.Model):
 
     def __str__(self):
         return self.name
+
+    def save(self, *args, **kwargs):
+        if not self.slug:
+            base_slug = slugify(self.name) or 'service'
+            slug = base_slug
+            counter = 1
+            while Service.objects.filter(slug=slug).exclude(pk=self.pk).exists():
+                slug = f"{base_slug}-{counter}"
+                counter += 1
+            self.slug = slug
+        super().save(*args, **kwargs)
 
     @property
     def current_price(self):
@@ -137,6 +162,9 @@ class Stylist(models.Model):
     specialties = models.ManyToManyField(Service, blank=True, related_name='specialists')
     is_active = models.BooleanField(default=True)
     is_available = models.BooleanField(default=True)
+    work_days = models.CharField(max_length=255, blank=True, default="", help_text="Example: Monday, Tuesday, Wednesday")
+    shift_start = models.TimeField(blank=True, null=True)
+    shift_end = models.TimeField(blank=True, null=True)
     rating = models.DecimalField(max_digits=3, decimal_places=2, default=5.0)
     display_order = models.IntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)

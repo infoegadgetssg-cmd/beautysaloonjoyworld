@@ -196,7 +196,7 @@
                             </a>
                             <a class="nav-link {% if request.resolver_match.url_name == 'favorites' %}active{% endif %}" 
                                href="{% url 'user_dashboard:favorites' %}">
-                                <i class="fas fa-heart"></i>Favorites
+                                <i class="fas fa-heart"></i>Favorites ({{ favorites_count|default:0 }})
                             </a>
                             <a class="nav-link {% if request.resolver_match.url_name == 'notifications' %}active{% endif %}" 
                                href="{% url 'user_dashboard:notifications' %}">

@@ -1,0 +1,63 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}Booking Deposit Payment{% endblock %}
+
+{% block content %}
+<section class="py-5">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card shadow-sm">
+                    <div class="card-body p-4">
+                        <h3 class="mb-4">Booking Deposit Payment</h3>
+                        <div class="mb-3"><strong>Service:</strong> {{ booking.service.name }}</div>
+                        <div class="mb-3"><strong>Appointment Date:</strong> {{ booking.date }}</div>
+                        <div class="mb-3"><strong>Stylist:</strong> {{ booking.stylist.name|default:"Any Available Stylist" }}</div>
+                        <div class="mb-3"><strong>Total Price:</strong> £{{ booking.total_price }}</div>
+                        <div class="mb-3"><strong>Deposit Required (50%):</strong> £{{ booking.deposit_amount }}</div>
+                        {% if booking.payment_deadline %}
+                        <div class="mb-4 text-danger"><strong>Payment Deadline:</strong> {{ booking.payment_deadline }}</div>
+                        {% endif %}
+
+                        {% if booking.status == 'awaiting_payment' and not booking.deposit_paid %}
+                        <button type="button" id="payWithPaystackBtn" class="btn btn-primary">
+                            Pay with Paystack
+                        </button>
+                        {% elif booking.status == 'confirmed' %}
+                        <div class="alert alert-success mb-0">Deposit already paid. Booking is confirmed.</div>
+                        {% else %}
+                        <div class="alert alert-info mb-0">Payment is not required for the current booking status.</div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% if booking.status == 'awaiting_payment' and not booking.deposit_paid %}
+<script src="https://js.paystack.co/v1/inline.js"></script>
+<script>
+    (function () {
+        const payBtn = document.getElementById('payWithPaystackBtn');
+        if (!payBtn) return;
+
+        payBtn.addEventListener('click', function () {
+            const handler = PaystackPop.setup({
+                key: '{{ paystack_public_key }}',
+                email: '{{ request.user.email|escapejs }}',
+                amount: {{ paystack_amount_kobo }},
+                ref: '{{ paystack_reference }}',
+                callback: function (response) {
+                    window.location.href = "{% url 'booking:verify_booking_payment' booking.id %}?reference=" + encodeURIComponent(response.reference);
+                },
+                onClose: function () {
+                    // keep page state unchanged when modal closes
+                }
+            });
+            handler.openIframe();
+        });
+    })();
+</script>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,83 @@
+{% extends 'admin_dashboard/base.html' %}
+
+{% block title %}Customer Detail | Joy World Beauty Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h4>Customer Detail</h4>
+    <a href="{% url 'admin_dashboard:customers' %}" class="btn btn-outline-secondary btn-sm">
+        <i class="fas fa-arrow-left me-1"></i> Back to Customers
+    </a>
+</div>
+
+<div class="card mb-4">
+    <div class="card-body">
+        <h5 class="mb-1">{{ customer.get_full_name|default:customer.username }}</h5>
+        <p class="mb-1"><strong>Email:</strong> {{ customer.email }}</p>
+        <p class="mb-1"><strong>Phone:</strong> {{ customer.phone|default:"No phone" }}</p>
+        <p class="mb-0"><strong>Member since:</strong> {{ customer.date_joined|date:"M d, Y" }}</p>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-md-3 col-6">
+        <div class="card"><div class="card-body"><strong>Total Orders:</strong> {{ total_orders }}</div></div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card"><div class="card-body"><strong>Total Bookings:</strong> {{ total_bookings }}</div></div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card"><div class="card-body"><strong>Total Spent:</strong> &pound;{{ total_spent|floatformat:2 }}</div></div>
+    </div>
+    <div class="col-md-3 col-6">
+        <div class="card"><div class="card-body"><strong>Loyalty Points:</strong> {{ loyalty_points }}</div></div>
+    </div>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header"><strong>Recent Orders</strong></div>
+            <div class="card-body">
+                {% for order in orders %}
+                <div class="border-bottom py-2">
+                    <div class="d-flex justify-content-between">
+                        <span>Order #{{ order.id }}</span>
+                        <span>&pound;{{ order.total_amount|floatformat:2 }}</span>
+                    </div>
+                    <small class="text-muted d-block mb-1">
+                        {{ order.created_at|date:"M d, Y H:i" }} - {{ order.status|title }}
+                    </small>
+                    <div>
+                        {% for item in order.items.all %}
+                        <div class="small">
+                            {{ item.product.name }} (Qty: {{ item.quantity }}) - &pound;{{ item.unit_price|floatformat:2 }}
+                        </div>
+                        {% empty %}
+                        <div class="small text-muted">No products found for this order.</div>
+                        {% endfor %}
+                    </div>
+                </div>
+                {% empty %}
+                <p class="text-muted mb-0">No recent orders.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <div class="col-lg-6">
+        <div class="card">
+            <div class="card-header"><strong>Recent Bookings</strong></div>
+            <div class="card-body">
+                {% for booking in recent_bookings %}
+                <div class="d-flex justify-content-between border-bottom py-2">
+                    <span>{{ booking.service.name }} ({{ booking.date|date:"M d, Y" }})</span>
+                    <span class="text-capitalize">{{ booking.status }}</span>
+                </div>
+                {% empty %}
+                <p class="text-muted mb-0">No recent bookings.</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

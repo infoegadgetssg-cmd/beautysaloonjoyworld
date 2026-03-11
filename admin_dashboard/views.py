@@ -2,11 +2,17 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.core.mail import send_mail
+from django.conf import settings
 from django.db.models import Count, Sum, Avg, Q
+from django.db.models.functions import Coalesce
 from django.utils import timezone
+from django.utils.timesince import timesince
 from datetime import datetime, timedelta
 from django.http import JsonResponse
 from django.core.paginator import Paginator
+from django.utils.text import slugify
+from django.urls import reverse
 
 from accounts.models import CustomUser
 from booking.models import Booking
@@ -14,10 +20,43 @@ from services.models import Stylist
 from services.models import Service, ServiceCategory 
 from shop.models import Product, ProductCategory, Order
 from contact.models import ContactMessage
+from user_dashboard.models import UserNotification
 from .models import DashboardNotification, RecentActivity, AdminDashboard
 from .forms import DashboardSettingsForm, ServiceForm, ProductForm
 from gallery.models import GalleryImage, GalleryCategory
 import json
+
+DEFAULT_SERVICE_CATEGORIES = [
+    ("Hair", "hair"),
+    ("Nails", "nails"),
+    ("Facial", "facial"),
+    ("Massage", "massage"),
+    ("Spa", "spa"),
+]
+
+
+def _ensure_default_service_categories():
+    if not ServiceCategory.objects.exists():
+        ServiceCategory.objects.bulk_create([
+            ServiceCategory(name=name, slug=slug, is_active=True)
+            for name, slug in DEFAULT_SERVICE_CATEGORIES
+        ])
+
+
+def _ensure_uncategorized_gallery_category():
+    category, _ = GalleryCategory.objects.get_or_create(
+        slug='uncategorized',
+        defaults={
+            'name': 'Uncategorized',
+            'description': 'Fallback category for uncategorized images',
+            'is_active': True,
+            'order': 999,
+        }
+    )
+
+    # Backward-compatibility for legacy records that may have null category.
+    GalleryImage.objects.filter(category__isnull=True).update(category=category)
+    return category
 
 
 
@@ -44,15 +83,15 @@ def dashboard_index(request):
     today_bookings = Booking.objects.filter(date=today).count()
     pending_bookings = Booking.objects.filter(status='pending').count()
     
-    # Revenue statistics
-    total_revenue = Booking.objects.filter(
-        status__in=['confirmed', 'completed']
-    ).aggregate(total=Sum('total_price'))['total'] or 0
+    # Revenue statistics (orders only)
+    total_revenue = Order.objects.filter(
+        status__in=['paid', 'completed']
+    ).aggregate(total=Sum('total_amount'))['total'] or 0
     
-    monthly_revenue = Booking.objects.filter(
-        status__in=['confirmed', 'completed'],
+    monthly_revenue = Order.objects.filter(
+        status__in=['paid', 'completed'],
         created_at__gte=thirty_days_ago
-    ).aggregate(total=Sum('total_price'))['total'] or 0
+    ).aggregate(total=Sum('total_amount'))['total'] or 0
     
     # Customer statistics
     total_customers = CustomUser.objects.filter(is_staff=False).count()
@@ -85,8 +124,8 @@ def dashboard_index(request):
         'total_bookings': total_bookings,
         'today_bookings': today_bookings,
         'pending_bookings': pending_bookings,
-        'total_revenue': f"£{total_revenue:.2f}",
-        'monthly_revenue': f"£{monthly_revenue:.2f}",
+        'total_revenue': f"\u00a3{total_revenue:.2f}",
+        'monthly_revenue': f"\u00a3{monthly_revenue:.2f}",
         'total_customers': total_customers,
         'new_customers': new_customers,
         'total_products': total_products,
@@ -104,6 +143,22 @@ def dashboard_index(request):
 @admin_required
 def bookings_management(request):
     """Manage bookings"""
+    overdue_bookings = Booking.objects.filter(
+        status=Booking.STATUS_AWAITING_PAYMENT,
+        deposit_paid=False,
+        payment_deadline__isnull=False,
+        payment_deadline__lt=timezone.now()
+    )
+    for booking in overdue_bookings:
+        booking.status = Booking.STATUS_CANCELLED
+        booking.save()
+        UserNotification.objects.create(
+            user=booking.user,
+            title='Booking Cancelled',
+            message='Your booking was cancelled because the required deposit was not paid within 48 hours.',
+            notification_type='booking_update'
+        )
+
     status_filter = request.GET.get('status', 'all')
     date_filter = request.GET.get('date', '')
     
@@ -133,9 +188,9 @@ def bookings_management(request):
 def customers_management(request):
     """Manage customers"""
     search_query = request.GET.get('search', '')
-    
-    customers = CustomUser.objects.filter(is_staff=False)
-    
+
+    customers = CustomUser.objects.filter(is_staff=False).distinct()
+
     if search_query:
         customers = customers.filter(
             Q(email__icontains=search_query) |
@@ -143,41 +198,14 @@ def customers_management(request):
             Q(last_name__icontains=search_query)
         )
 
-    # Get specific customer if requested
-    customer_id = request.GET.get('customer_id')
-    selected_customer = None
-    
-    if customer_id:
-        try:
-            selected_customer = customers.get(id=customer_id)
-        except CustomUser.DoesNotExist:
-            pass
-    elif customers.exists():
-        # Default to first customer
-        selected_customer = customers.first()
-    
-
-    # Calculate statistics for selected customer
-    customer_stats = {}
-    if selected_customer:
-        # Get bookings count
-        booking_count = Booking.objects.filter(user=selected_customer).count()
-        
-        # Get total spent from completed orders
+    customers_with_stats = []
+    for customer in customers:
+        order_count = Order.objects.filter(user=customer).count()
         total_spent = Order.objects.filter(
-            user=selected_customer,
-            status='completed'
+            user=customer,
+            status__in=['paid', 'completed']
         ).aggregate(total=Sum('total_amount'))['total'] or 0
-        
-        # Get recent bookings
-        recent_bookings = Booking.objects.filter(
-            user=selected_customer
-        ).select_related('service').order_by('-date', '-time')[:5]
-        
-        # Calculate loyalty points (example: £1 spent = 10 points)
-        loyalty_points = int(total_spent * 10)
-        
-        # Determine tier based on spending
+
         if total_spent >= 1000:
             tier = "Platinum"
         elif total_spent >= 500:
@@ -186,30 +214,55 @@ def customers_management(request):
             tier = "Silver"
         else:
             tier = "Bronze"
-        
-        customer_stats = {
-            'customer': selected_customer,
-            'booking_count': booking_count,
+
+        customers_with_stats.append({
+            'customer': customer,
+            'booking_count': order_count,
             'total_spent': total_spent,
-            'recent_bookings': recent_bookings,
-            'loyalty_points': loyalty_points,
             'tier': tier,
-            'member_since': selected_customer.date_joined.strftime("%b %d, %Y") if selected_customer.date_joined else "N/A",
-        }
-    
+        })
+
     context = {
-        'customers': customers,
-        'selected_customer': customer_stats,
+        'customers_with_stats': customers_with_stats,
         'search_query': search_query,
-        'total_customers': customers.count(),
+        'total_customers': len(customers_with_stats),
     }
-    
+
     return render(request, 'admin_dashboard/customers.html', context)
+
+
+@admin_required
+def customer_detail_view(request, user_id):
+    """Customer detail page."""
+    customer = get_object_or_404(CustomUser, id=user_id, is_staff=False)
+
+    orders = Order.objects.filter(user=customer).prefetch_related('items__product').order_by('-created_at')
+    paid_orders = orders.filter(status__in=['paid', 'completed'])
+    bookings = Booking.objects.filter(user=customer).select_related('service').order_by('-date', '-time')
+
+    total_spent = paid_orders.aggregate(total=Sum('total_amount'))['total'] or 0
+    total_orders = orders.count()
+    total_bookings = bookings.count()
+    loyalty_points = int(total_spent * 10)
+
+    context = {
+        'customer': customer,
+        'orders': orders[:5],
+        'recent_bookings': bookings[:5],
+        'total_orders': total_orders,
+        'total_bookings': total_bookings,
+        'total_spent': total_spent,
+        'loyalty_points': loyalty_points,
+    }
+    return render(request, 'admin_dashboard/customer_detail.html', context)
 
 @admin_required
 def services_management(request):
     """Manage services"""
-    services = Service.objects.all()
+    _ensure_default_service_categories()
+    services = Service.objects.all().order_by('-created_at')
+    categories = ServiceCategory.objects.all().order_by('display_order', 'name')
+    is_ajax = request.headers.get('x-requested-with') == 'XMLHttpRequest'
     
     if request.method == 'POST':
         form = ServiceForm(request.POST, request.FILES)
@@ -227,11 +280,32 @@ def services_management(request):
                     ip_address=request.META.get('REMOTE_ADDR')
                 )
                 
+                if is_ajax:
+                    return JsonResponse({
+                        'success': True,
+                        'message': 'Service added successfully.'
+                    })
+
                 messages.success(request, 'Service added successfully!')
                 return redirect('admin_dashboard:services')
             except Exception as e:
+                if is_ajax:
+                    return JsonResponse({
+                        'success': False,
+                        'error': str(e)
+                    }, status=500)
                 messages.error(request, f'Error saving service: {str(e)}')
         else:
+            if is_ajax:
+                error_messages = []
+                for field, errors in form.errors.items():
+                    for error in errors:
+                        error_messages.append(f"{field}: {error}")
+                return JsonResponse({
+                    'success': False,
+                    'message': '; '.join(error_messages) or 'Invalid service data.',
+                    'errors': form.errors
+                }, status=400)
             # Show form errors
             for field, errors in form.errors.items():
                 for error in errors:
@@ -241,6 +315,7 @@ def services_management(request):
     
     context = {
         'services': services,
+        'categories': categories,
         'form': form,
         'total_services': services.count(),
     }
@@ -249,9 +324,83 @@ def services_management(request):
 
 
 @admin_required
+def create_service_category(request):
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Invalid request method.'}, status=405)
+
+    name = (request.POST.get('name') or '').strip()
+    display_order = request.POST.get('display_order') or 0
+    is_active = request.POST.get('is_active') in ('on', 'true', '1')
+
+    if not name:
+        return JsonResponse({'success': False, 'message': 'Category name is required.'}, status=400)
+
+    slug_base = slugify(name) or 'category'
+    slug = slug_base
+    counter = 1
+    while ServiceCategory.objects.filter(slug=slug).exists():
+        slug = f"{slug_base}-{counter}"
+        counter += 1
+
+    category = ServiceCategory.objects.create(
+        name=name,
+        slug=slug,
+        display_order=int(display_order),
+        is_active=is_active
+    )
+    return JsonResponse({
+        'success': True,
+        'message': 'Category created successfully.',
+        'category': {'id': category.id, 'name': category.name, 'display_order': category.display_order, 'is_active': category.is_active}
+    })
+
+
+@admin_required
+def update_service_category(request, category_id):
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Invalid request method.'}, status=405)
+
+    category = get_object_or_404(ServiceCategory, id=category_id)
+    name = (request.POST.get('name') or '').strip()
+    display_order = request.POST.get('display_order') or category.display_order
+    is_active = request.POST.get('is_active') in ('on', 'true', '1')
+
+    if not name:
+        return JsonResponse({'success': False, 'message': 'Category name is required.'}, status=400)
+
+    category.name = name
+    category.display_order = int(display_order)
+    category.is_active = is_active
+    category.save()
+
+    return JsonResponse({'success': True, 'message': 'Category updated successfully.'})
+
+
+@admin_required
+def delete_service_category(request, category_id):
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Invalid request method.'}, status=405)
+
+    category = get_object_or_404(ServiceCategory, id=category_id)
+    if category.services.exists():
+        return JsonResponse({'success': False, 'message': 'Cannot delete a category with linked services.'}, status=400)
+
+    category.delete()
+    return JsonResponse({'success': True, 'message': 'Category deleted successfully.'})
+
+
+@admin_required
 def products_management(request):
     """Manage products"""
-    products = Product.objects.all()
+    products = Product.objects.annotate(
+        sold_count=Coalesce(
+            Sum(
+                'orderitem__quantity',
+                filter=Q(orderitem__order__status__in=['paid', 'completed'])
+            ),
+            0
+        )
+    )
     categories = ProductCategory.objects.filter(is_active=True)
     low_stock_products = Product.objects.filter(
         stock_quantity__lte=10,
@@ -377,20 +526,29 @@ def delete_product(request, product_id):
                 ip_address=request.META.get('REMOTE_ADDR')
             )
             
-            return JsonResponse({
-                'success': True,
-                'message': 'Product deleted successfully.'
-            })
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': True,
+                    'message': 'Product deleted successfully.'
+                })
+            messages.success(request, 'Product deleted successfully.')
+            return redirect('admin_dashboard:products')
         except Product.DoesNotExist:
-            return JsonResponse({
-                'success': False,
-                'message': 'Product not found.'
-            })
+            if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Product not found.'
+                })
+            messages.error(request, 'Product not found.')
+            return redirect('admin_dashboard:products')
     
-    return JsonResponse({
-        'success': False,
-        'message': 'Invalid request method.'
-    })
+    if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+        return JsonResponse({
+            'success': False,
+            'message': 'Invalid request method.'
+        })
+    messages.error(request, 'Invalid request method.')
+    return redirect('admin_dashboard:products')
 
 @admin_required
 def update_product_stock(request, product_id):
@@ -432,14 +590,47 @@ def messages_management(request):
     """Manage contact messages"""
     messages_list = ContactMessage.objects.order_by('-created_at')
     unread_count = ContactMessage.objects.filter(is_read=False).count()
-    
+
     context = {
         'messages': messages_list,
         'unread_count': unread_count,
         'total_messages': messages_list.count(),
     }
-    
+
     return render(request, 'admin_dashboard/messages.html', context)
+
+
+@admin_required
+def messages_api(request):
+    """Return filtered messages for AJAX"""
+    filter_param = request.GET.get('filter')
+    queryset = ContactMessage.objects.order_by('-created_at')
+
+    if filter_param == 'unread':
+        queryset = queryset.filter(is_read=False)
+    elif filter_param == 'urgent':
+        queryset = queryset.filter(status='urgent')
+
+    messages_data = []
+    for message in queryset:
+        messages_data.append({
+            'id': message.id,
+            'name': message.name,
+            'email': message.email,
+            'subject': message.subject or 'No Subject',
+            'message': message.message,
+            'is_read': message.is_read,
+            'is_urgent': message.status == 'urgent',
+            'status': message.status,
+            'created_at': message.created_at.strftime('%b %d, %Y %I:%M %p'),
+            'timesince': timesince(message.created_at) + ' ago',
+        })
+
+    return JsonResponse({
+        'messages': messages_data,
+        'total': queryset.count(),
+        'unread': ContactMessage.objects.filter(is_read=False).count(),
+    })
 
 # admin_dashboard/views.py - Update analytics_view function
 # admin_dashboard/views.py - Update analytics_view function
@@ -456,23 +647,23 @@ def analytics_view(request):
     
     # ============ REVENUE METRICS ============
     # Total revenue
-    total_revenue = Booking.objects.filter(
-        status__in=['confirmed', 'completed']
-    ).aggregate(total=Sum('total_price'))['total'] or 0
+    total_revenue = Order.objects.filter(
+        status__in=['paid', 'completed']
+    ).aggregate(total=Sum('total_amount'))['total'] or 0
     
     # Monthly revenue (last 30 days)
-    monthly_revenue = Booking.objects.filter(
-        status__in=['confirmed', 'completed'],
+    monthly_revenue = Order.objects.filter(
+        status__in=['paid', 'completed'],
         created_at__gte=thirty_days_ago
-    ).aggregate(total=Sum('total_price'))['total'] or 0
+    ).aggregate(total=Sum('total_amount'))['total'] or 0
     
     # Previous month revenue for comparison
     previous_month_start = timezone.now() - timedelta(days=60)
     previous_month_end = timezone.now() - timedelta(days=30)
-    previous_month_revenue = Booking.objects.filter(
-        status__in=['confirmed', 'completed'],
+    previous_month_revenue = Order.objects.filter(
+        status__in=['paid', 'completed'],
         created_at__range=[previous_month_start, previous_month_end]
-    ).aggregate(total=Sum('total_price'))['total'] or 0
+    ).aggregate(total=Sum('total_amount'))['total'] or 0
     
     # Revenue growth percentage
     revenue_growth = 0
@@ -495,10 +686,10 @@ def analytics_view(request):
         ).count()
         
         # Revenue
-        revenue = Booking.objects.filter(
-            status__in=['confirmed', 'completed'],
+        revenue = Order.objects.filter(
+            status__in=['paid', 'completed'],
             created_at__range=[day_start, day_end]
-        ).aggregate(total=Sum('total_price'))['total'] or 0
+        ).aggregate(total=Sum('total_amount'))['total'] or 0
         
         daily_bookings_labels.append(day.strftime('%b %d'))
         daily_bookings_data.append(count)
@@ -512,10 +703,10 @@ def analytics_view(request):
         month_start = (timezone.now() - timedelta(days=30*i)).replace(day=1)
         month_end = (month_start + timedelta(days=32)).replace(day=1) - timedelta(days=1)
         
-        revenue = Booking.objects.filter(
-            status__in=['confirmed', 'completed'],
+        revenue = Order.objects.filter(
+            status__in=['paid', 'completed'],
             created_at__range=[month_start, month_end]
-        ).aggregate(total=Sum('total_price'))['total'] or 0
+        ).aggregate(total=Sum('total_amount'))['total'] or 0
         
         monthly_labels.append(month_start.strftime('%b %Y'))
         monthly_data.append(float(revenue))
@@ -605,11 +796,11 @@ def analytics_view(request):
     ).count()
     
     product_revenue = Order.objects.filter(
-        status='completed'
+        status__in=['paid', 'completed']
     ).aggregate(total=Sum('total_amount'))['total'] or 0
     
     # Average order value
-    completed_orders = Order.objects.filter(status='completed')
+    completed_orders = Order.objects.filter(status__in=['paid', 'completed'])
     total_orders = completed_orders.count()
     avg_order_value = 0
     if total_orders > 0:
@@ -686,15 +877,72 @@ def update_booking_status(request, booking_id):
         try:
             booking = Booking.objects.get(id=booking_id)
             new_status = request.POST.get('status')
+            if new_status == 'approved':
+                new_status = 'confirmed'
+            cancellation_reason = (request.POST.get('reason') or '').strip()
             
-            if new_status in ['pending', 'confirmed', 'completed', 'cancelled']:
-                booking.status = new_status
-                booking.save()
-                
+            if new_status in ['pending', 'awaiting_payment', 'confirmed', 'completed', 'cancelled']:
+                if new_status == 'confirmed':
+                    booking.status = Booking.STATUS_AWAITING_PAYMENT
+                    booking.approval_time = timezone.now()
+                    booking.payment_deadline = booking.approval_time + timedelta(hours=48)
+                    if booking.total_price and (not booking.deposit_amount or booking.deposit_amount <= 0):
+                        booking.deposit_amount = (booking.total_price * 0.5)
+                    booking.save()
+
+                    UserNotification.objects.create(
+                        user=booking.user,
+                        title='Booking Approved',
+                        message='Your booking has been approved. Please pay the required 50% deposit to confirm your appointment.',
+                        notification_type='booking_update'
+                    )
+
+                    payment_link = request.build_absolute_uri(
+                        reverse('booking:booking_payment', kwargs={'booking_id': booking.id})
+                    )
+                    stylist_name = booking.stylist.name if booking.stylist else "Any Available Stylist"
+                    email_subject = 'Booking Approved - Payment Required'
+                    email_message = (
+                        "Your booking has been approved.\n\n"
+                        f"Service: {booking.service.name}\n"
+                        f"Appointment Date: {booking.date} {booking.time}\n"
+                        f"Stylist: {stylist_name}\n"
+                        f"Deposit Required (50%): £{booking.deposit_amount}\n\n"
+                        f"Complete payment here: {payment_link}\n"
+                    )
+                    try:
+                        send_mail(
+                            email_subject,
+                            email_message,
+                            settings.DEFAULT_FROM_EMAIL,
+                            [booking.user.email],
+                            fail_silently=False
+                        )
+                    except Exception:
+                        pass
+                    status_for_logs = Booking.STATUS_AWAITING_PAYMENT
+                else:
+                    booking.status = new_status
+                    if new_status == Booking.STATUS_CANCELLED and booking.payment_status == "PAID":
+                        booking.refund_status = Booking.REFUND_PENDING
+                    booking.save()
+                    status_for_logs = new_status
+
+                if status_for_logs == Booking.STATUS_CANCELLED:
+                    cancel_message = 'Your booking has been cancelled.'
+                    if cancellation_reason:
+                        cancel_message = f'{cancel_message} Reason: {cancellation_reason}'
+                    UserNotification.objects.create(
+                        user=booking.user,
+                        title='Booking Cancelled',
+                        message=cancel_message,
+                        notification_type='booking_update'
+                    )
+
                 # Create notification
                 DashboardNotification.objects.create(
                     title='Booking Status Updated',
-                    message=f'Booking #{booking_id} status changed to {new_status}',
+                    message=f'Booking #{booking_id} status changed to {status_for_logs}',
                     notification_type='booking_update',
                     priority='normal'
                 )
@@ -703,7 +951,7 @@ def update_booking_status(request, booking_id):
                 RecentActivity.objects.create(
                     user=request.user,
                     activity_type='booking_updated',
-                    description=f'Booking #{booking_id} status updated to {new_status}',
+                    description=f'Booking #{booking_id} status updated to {status_for_logs}',
                     related_id=str(booking_id),
                     related_model='booking',
                     ip_address=request.META.get('REMOTE_ADDR')
@@ -711,7 +959,10 @@ def update_booking_status(request, booking_id):
                 
                 return JsonResponse({
                     'success': True,
-                    'message': 'Booking status updated successfully.'
+                    'message': 'Booking status updated successfully.',
+                    'updated_status': status_for_logs,
+                    'display_status': booking.get_status_display(),
+                    'refund_status': booking.refund_status,
                 })
         except Booking.DoesNotExist:
             pass
@@ -719,6 +970,45 @@ def update_booking_status(request, booking_id):
     return JsonResponse({
         'success': False,
         'message': 'Failed to update booking status.'
+    })
+
+
+@admin_required
+def mark_booking_refunded(request, booking_id):
+    """Mark pending refund as refunded for a cancelled paid booking."""
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Invalid request method.'}, status=405)
+
+    booking = get_object_or_404(Booking, id=booking_id)
+    if booking.status != Booking.STATUS_CANCELLED:
+        return JsonResponse({'success': False, 'message': 'Only cancelled bookings can be refunded.'}, status=400)
+
+    if booking.refund_status != Booking.REFUND_PENDING:
+        return JsonResponse({'success': False, 'message': 'Refund is not pending for this booking.'}, status=400)
+
+    booking.refund_status = Booking.REFUND_REFUNDED
+    booking.save()
+
+    DashboardNotification.objects.create(
+        title='Booking Refund Updated',
+        message=f'Booking #{booking_id} marked as refunded',
+        notification_type='booking_update',
+        priority='normal'
+    )
+
+    RecentActivity.objects.create(
+        user=request.user,
+        activity_type='booking_updated',
+        description=f'Booking #{booking_id} refund marked as refunded',
+        related_id=str(booking_id),
+        related_model='booking',
+        ip_address=request.META.get('REMOTE_ADDR')
+    )
+
+    return JsonResponse({
+        'success': True,
+        'message': 'Refund marked as completed.',
+        'refund_status': booking.refund_status,
     })
 
 @admin_required
@@ -743,16 +1033,18 @@ def get_service_data(request, service_id):
         service = Service.objects.get(id=service_id)
         data = {
             'success': True,
-            'service': {
-                'id': service.id,
-                'name': service.name,
-                'description': service.description,
-                'category': service.category.name if service.category else None,
-                'duration': service.duration,
-                'price': float(service.price),
-                'is_available': service.is_available,
+                'service': {
+                    'id': service.id,
+                    'name': service.name,
+                    'short_description': service.short_description,
+                    'full_description': service.full_description,
+                    'category_id': service.category.id if service.category else None,
+                    'duration': service.duration,
+                    'price': float(service.price),
+                    'is_available': service.is_available,
+                    'service_color': service.service_color,
+                }
             }
-        }
     except Service.DoesNotExist:
         data = {'success': False, 'message': 'Service not found'}
     
@@ -836,6 +1128,7 @@ def delete_service(request, service_id):
 @admin_required
 def gallery_management(request):
     """Manage gallery images"""
+    _ensure_uncategorized_gallery_category()
     images = GalleryImage.objects.select_related('category').order_by('-created_at')
     categories = GalleryCategory.objects.filter(is_active=True).order_by('name')
     
@@ -881,6 +1174,114 @@ def gallery_management(request):
     
     return render(request, 'admin_dashboard/gallery.html', context)
 
+
+@admin_required
+def gallery_categories_management(request):
+    """Manage gallery categories."""
+    _ensure_uncategorized_gallery_category()
+    categories = GalleryCategory.objects.order_by('order', 'name')
+    context = {
+        'categories': categories,
+        'total_categories': categories.count(),
+    }
+    return render(request, 'admin_dashboard/gallery_categories.html', context)
+
+
+@admin_required
+def list_gallery_categories(request):
+    """Return gallery categories for dynamic dropdowns."""
+    categories = GalleryCategory.objects.filter(is_active=True).order_by('order', 'name')
+    return JsonResponse({
+        'success': True,
+        'categories': [
+            {
+                'id': c.id,
+                'name': c.name,
+                'description': c.description or '',
+            }
+            for c in categories
+        ]
+    })
+
+
+@admin_required
+def create_gallery_category(request):
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Invalid request method.'}, status=405)
+
+    name = (request.POST.get('name') or '').strip()
+    description = (request.POST.get('description') or '').strip()
+
+    if not name:
+        return JsonResponse({'success': False, 'message': 'Category name is required.'}, status=400)
+
+    slug_base = slugify(name) or 'gallery-category'
+    slug = slug_base
+    counter = 1
+    while GalleryCategory.objects.filter(slug=slug).exists():
+        slug = f'{slug_base}-{counter}'
+        counter += 1
+
+    category = GalleryCategory.objects.create(
+        name=name,
+        slug=slug,
+        description=description,
+        is_active=True,
+    )
+
+    return JsonResponse({
+        'success': True,
+        'message': 'Category created successfully.',
+        'category': {
+            'id': category.id,
+            'name': category.name,
+            'description': category.description or '',
+            'created_at': category.created_at.strftime('%Y-%m-%d %H:%M'),
+        }
+    })
+
+
+@admin_required
+def update_gallery_category(request, category_id):
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Invalid request method.'}, status=405)
+
+    category = get_object_or_404(GalleryCategory, id=category_id)
+    name = (request.POST.get('name') or '').strip()
+    description = (request.POST.get('description') or '').strip()
+
+    if not name:
+        return JsonResponse({'success': False, 'message': 'Category name is required.'}, status=400)
+
+    if category.slug == 'uncategorized' and name.lower() != 'uncategorized':
+        return JsonResponse({'success': False, 'message': 'Uncategorized category name cannot be changed.'}, status=400)
+
+    category.name = name
+    category.description = description
+    category.save()
+
+    return JsonResponse({'success': True, 'message': 'Category updated successfully.'})
+
+
+@admin_required
+def delete_gallery_category(request, category_id):
+    if request.method != 'POST':
+        return JsonResponse({'success': False, 'message': 'Invalid request method.'}, status=405)
+
+    category = get_object_or_404(GalleryCategory, id=category_id)
+    if category.slug == 'uncategorized':
+        return JsonResponse({'success': False, 'message': 'Uncategorized category cannot be deleted.'}, status=400)
+
+    image_count = GalleryImage.objects.filter(category=category).count()
+    if image_count > 0:
+        return JsonResponse({
+            'success': False,
+            'message': 'This category contains images and cannot be deleted until those images are reassigned.'
+        }, status=400)
+
+    category.delete()
+    return JsonResponse({'success': True, 'message': 'Category deleted successfully.'})
+
 @admin_required
 def get_gallery_image(request, image_id):
     """Get gallery image data for editing via AJAX"""
@@ -916,6 +1317,13 @@ def add_gallery_image(request):
                     'success': False,
                     'message': 'Please select an image file.'
                 })
+
+            category_id = request.POST.get('category')
+            if not category_id:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Please select a category.'
+                }, status=400)
             
             # Create new image
             image = GalleryImage(
@@ -928,16 +1336,14 @@ def add_gallery_image(request):
             )
             
             # Set category
-            category_id = request.POST.get('category')
-            if category_id:
-                try:
-                    category = GalleryCategory.objects.get(id=category_id)
-                    image.category = category
-                except GalleryCategory.DoesNotExist:
-                    return JsonResponse({
-                        'success': False,
-                        'message': 'Invalid category selected.'
-                    })
+            try:
+                category = GalleryCategory.objects.get(id=category_id)
+                image.category = category
+            except GalleryCategory.DoesNotExist:
+                return JsonResponse({
+                    'success': False,
+                    'message': 'Invalid category selected.'
+                }, status=400)
             
             # Handle image upload
             image.image = image_file
@@ -955,7 +1361,13 @@ def add_gallery_image(request):
             
             return JsonResponse({
                 'success': True,
-                'message': 'Image added successfully.'
+                'message': 'Image added successfully.',
+                'image': {
+                    'id': image.id,
+                    'title': image.title,
+                    'image_url': image.image.url if image.image else '',
+                    'category': image.category.name if image.category else '',
+                }
             })
             
         except Exception as e:
@@ -1014,7 +1426,13 @@ def update_gallery_image(request, image_id):
             
             return JsonResponse({
                 'success': True,
-                'message': 'Image updated successfully.'
+                'message': 'Image updated successfully.',
+                'image': {
+                    'id': image.id,
+                    'title': image.title,
+                    'image_url': image.image.url if image.image else '',
+                    'category': image.category.name if image.category else '',
+                }
             })
             
         except GalleryImage.DoesNotExist:
@@ -1065,3 +1483,4 @@ def delete_gallery_image(request, image_id):
         'success': False,
         'message': 'Invalid request method.'
     })
+

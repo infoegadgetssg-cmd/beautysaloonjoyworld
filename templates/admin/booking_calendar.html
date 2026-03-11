@@ -1,0 +1,48 @@
+{% extends "admin_dashboard/base.html" %}
+
+{% block title %}Booking Calendar{% endblock %}
+
+{% block extra_css %}
+<link href="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/main.min.css" rel="stylesheet">
+<style>
+  #booking-calendar {
+    max-width: 1100px;
+    margin: 24px auto;
+    background: #fff;
+    padding: 16px;
+    border-radius: 8px;
+  }
+</style>
+{% endblock %}
+
+{% block content %}
+<h1>Admin Booking Calendar</h1>
+<div id="booking-calendar"></div>
+{% endblock %}
+
+{% block extra_js %}
+<script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.15/index.global.min.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const calendarEl = document.getElementById('booking-calendar');
+    const calendar = new FullCalendar.Calendar(calendarEl, {
+      initialView: 'dayGridMonth',
+      headerToolbar: {
+        left: 'prev,next today',
+        center: 'title',
+        right: 'dayGridMonth,timeGridWeek,timeGridDay'
+      },
+      events: "/api/events",
+      eventTimeFormat: {
+        hour: '2-digit',
+        minute: '2-digit',
+        meridiem: true
+      }
+    });
+    calendar.render();
+    calendar.refetchEvents();
+
+    document.addEventListener('bookingCreated', () => calendar.refetchEvents());
+  });
+</script>
+{% endblock %}

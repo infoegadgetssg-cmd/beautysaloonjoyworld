@@ -5,7 +5,7 @@ from .models import ServiceCategory, Service, ServiceReview, ServiceFAQ, Stylist
 
 @admin.register(ServiceCategory)
 class ServiceCategoryAdmin(admin.ModelAdmin):
-    list_display = ('name', 'display_order', 'is_active', 'service_count', 'created_at')
+    list_display = ('name', 'display_order', 'is_active', 'service_count', 'created_at', 'slug')
     list_filter = ('is_active',)
     search_fields = ('name', 'description')
     prepopulated_fields = {'slug': ('name',)}
@@ -73,8 +73,12 @@ class ServiceFAQAdmin(admin.ModelAdmin):
 
 @admin.register(Stylist)
 class StylistAdmin(admin.ModelAdmin):
-    list_display = ('name', 'title', 'experience_years', 'is_active', 'display_order')
+    list_display = ('name', 'specialties_list', 'shift_start', 'shift_end', 'is_active')
     list_filter = ('is_active',)
-    search_fields = ('name', 'title', 'bio')
+    search_fields = ('name', 'specialties__name')
     prepopulated_fields = {'slug': ('name',)}
     filter_horizontal = ('specialties',)
+
+    def specialties_list(self, obj):
+        return ", ".join(obj.specialties.values_list('name', flat=True)) or "None"
+    specialties_list.short_description = "Specialties"

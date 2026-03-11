@@ -1,0 +1,7 @@
+<h2>New Contact Message</h2>
+<p>Name: {{ contact.name }}</p>
+<p>Email: {{ contact.email }}</p>
+<p>Phone: {{ contact.phone|default:"Not provided" }}</p>
+<p>Subject: {{ contact.subject }}</p>
+<p>Message:</p>
+<p>{{ contact.message }}</p>

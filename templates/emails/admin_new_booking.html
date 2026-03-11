@@ -1,0 +1,6 @@
+<h2>New Service Booking</h2>
+<p>Customer: {{ customer_name }}</p>
+<p>Service: {{ booking.service.name }}</p>
+<p>Appointment: {{ booking.date }} {{ booking.time }}</p>
+<p>Phone: {{ booking.user.phone_number|default:"Not provided" }}</p>
+<p>Booking ID: #{{ booking.id }}</p>

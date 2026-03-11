@@ -6,7 +6,8 @@
 <!-- Home Page Content -->
 <div id="home-page" class="page-content">
   <!-- NEW HERO SECTION with animations -->
-  <section class="hero">
+  {% with hero_image_url=hero_image_url|default:"https://res.cloudinary.com/dlnji0lml/image/upload/v1772736934/Capturejoyworld_image_l1xspb.png" %}
+  <section class="hero" style="background-image: url('{{ hero_image_url }}');">
     <div class="container">
       <div class="row align-items-center">
         <div class="col-lg-6">
@@ -60,6 +61,7 @@
       />
     </div>
   </section>
+  {% endwith %}
 
   <!-- About Section -->
   <section class="section-padding">
@@ -368,22 +370,6 @@
     // Trigger hero animations
     triggerHeroAnimations();
 
-    // Set flag to show welcome modal (if user is authenticated)
-    {% if user.is_authenticated %}
-    // Set a flag that we just logged in (for the current session only)
-    if (!sessionStorage.getItem('welcomeChecked')) {
-      sessionStorage.setItem('justLoggedIn', 'true');
-      sessionStorage.setItem('welcomeChecked', 'true');
-      
-      // Show welcome modal after a short delay
-      setTimeout(() => {
-        showWelcomeBackModal({
-          displayName: "{{ user.first_name|default:user.username }}",
-          email: "{{ user.email }}"
-        });
-      }, 2000);
-    }
-    {% endif %}
   });
 </script>
 {% endblock %}

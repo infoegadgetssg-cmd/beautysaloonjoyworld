@@ -252,7 +252,8 @@
         }
         
         try {
-            const response = await fetch(`{% url 'gallery:toggle_like' %}${imageId}/`, {
+            const likeUrl = "{% url 'gallery:toggle_like' 0 %}".replace('/0/', `/${imageId}/`);
+            const response = await fetch(likeUrl, {
                 method: 'POST',
                 headers: {
                     'X-CSRFToken': '{{ csrf_token }}',

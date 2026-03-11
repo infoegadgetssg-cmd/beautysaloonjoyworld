@@ -10,6 +10,7 @@ import json
 
 from .models import ContactMessage, FAQ, SalonLocation, BusinessHours, QuickContactOption, NewsletterSubscriber
 from .forms import ContactForm, NewsletterSignupForm, QuickContactForm
+from core.notifications import send_contact_notifications
 
 
 def contact_view(request):
@@ -46,6 +47,7 @@ def contact_view(request):
                     pass
                 
                 contact_message.save()
+                send_contact_notifications(contact_message)
                 
                 # Handle newsletter subscription if selected
                 if contact_form.cleaned_data.get('subscribe_newsletter'):
@@ -65,51 +67,6 @@ def contact_view(request):
                         subscriber.is_active = True
                         subscriber.unsubscribed_at = None
                         subscriber.save()
-                
-                # Send confirmation email to user
-                try:
-                    subject = 'Thank You for Contacting Joy World Beauty Salon'
-                    message = render_to_string('contact/emails/contact_confirmation.html', {
-                        'name': contact_message.name,
-                        'subject': contact_message.subject,
-                    })
-                    
-                    email = EmailMessage(
-                        subject,
-                        message,
-                        settings.DEFAULT_FROM_EMAIL,
-                        [contact_message.email]
-                    )
-                    email.content_subtype = "html"
-                    email.send(fail_silently=True)
-                except Exception as e:
-                    print(f"Error sending confirmation email: {e}")
-                
-                # Send notification to admin
-                try:
-                    admin_subject = f'New Contact Message: {contact_message.subject}'
-                    admin_message = f"""
-                    New Contact Message Received:
-
-                    Name: {contact_message.name}
-                    Email: {contact_message.email}
-                    Phone: {contact_message.phone or 'Not provided'}
-                    Topic: {contact_message.get_topic_display()}
-                    Message: 
-                    {contact_message.message}
-
-                    Received at: {timezone.now().strftime('%Y-%m-%d %H:%M:%S')}
-                    """.strip()
-                    
-                    send_mail(
-                        subject=admin_subject,
-                        message=admin_message,
-                        from_email=settings.DEFAULT_FROM_EMAIL,
-                        recipient_list=[getattr(settings, 'CONTACT_EMAIL', settings.DEFAULT_FROM_EMAIL)],
-                        fail_silently=True,
-                    )
-                except Exception as e:
-                    print(f"Error sending admin notification: {e}")
                 
                 messages.success(request, 'Thank you for your message! We will get back to you within 24 hours.')
                 return redirect('contact:contact')

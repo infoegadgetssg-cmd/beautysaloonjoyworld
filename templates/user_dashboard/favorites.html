@@ -4,7 +4,7 @@
 {% block dashboard_content %}
 <h3 class="mb-4">My Favorites</h3>
 
-{% if favorite_services or favorite_products %}
+{% if favorite_services or favorite_products or wishlist_items %}
     <!-- Favorite Services -->
     {% if favorite_services %}
     <div class="mb-5">
@@ -50,6 +50,39 @@
     {% endif %}
     
     <!-- Favorite Products -->
+    {% if wishlist_items %}
+    <div class="mb-5">
+        <h5 class="mb-3">
+            <i class="fas fa-heart me-2 text-danger"></i>Wishlist Products
+            <span class="badge bg-danger ms-2">{{ wishlist_items.count }}</span>
+        </h5>
+        <div class="row">
+            {% for item in wishlist_items %}
+            <div class="col-md-4 mb-3">
+                <div class="product-card h-100">
+                    <div class="position-relative">
+                        <img src="{{ item.product.get_main_image_url }}" alt="{{ item.product.name }}" class="product-img">
+                    </div>
+                    <div class="product-content">
+                        <span class="product-category">{{ item.product.category.name|default:"Uncategorized" }}</span>
+                        <h4 class="product-title">{{ item.product.name }}</h4>
+                        <div class="product-price">£{{ item.product.price }}</div>
+                        <div class="product-actions">
+                            <a href="{% url 'shop:product_detail' item.product.slug %}" class="btn btn-primary w-100">View Details</a>
+                            <form method="post" action="{% url 'shop:toggle_wishlist' item.product.id %}" class="w-100 mt-2">
+                                {% csrf_token %}
+                                <button type="submit" class="btn btn-outline-danger w-100">Remove from Favorites</button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Legacy Favorite Products -->
     {% if favorite_products %}
     <div>
         <h5 class="mb-3">
@@ -108,7 +141,7 @@
         <h4 class="mb-3">No Favorites Yet</h4>
         <p class="text-muted mb-4">Save your favorite services and products to easily access them later!</p>
         <div class="d-flex gap-3 justify-content-center">
-            <a href="{% url 'services' %}" class="btn btn-primary">
+            <a href="{% url 'services:services_list' %}" class="btn btn-primary">
                 <i class="fas fa-spa me-2"></i>Browse Services
             </a>
             <a href="{% url 'shop:shop' %}" class="btn btn-success">

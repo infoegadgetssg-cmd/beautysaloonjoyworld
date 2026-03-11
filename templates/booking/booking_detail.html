@@ -1,0 +1,67 @@
+{% extends 'base.html' %}
+
+{% block title %}Booking Details | Joy World Home of Beauty{% endblock %}
+
+{% block content %}
+<section class="section-padding">
+    <div class="container">
+        <div class="row justify-content-center">
+            <div class="col-lg-8">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body p-4 p-md-5">
+                        <h2 class="h4 mb-4">Booking #{{ booking.id }}</h2>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <p class="mb-1"><strong>Name:</strong> {{ booking.user.get_full_name|default:booking.user.username }}</p>
+                                <p class="mb-1"><strong>Email:</strong> {{ booking.user.email }}</p>
+                                <p class="mb-1"><strong>Phone:</strong> {{ booking.user.phone_number|default:"Not provided" }}</p>
+                                <p class="mb-1"><strong>Service:</strong> {{ booking.service.name }}</p>
+                                <p class="mb-1"><strong>Stylist:</strong> {{ booking.stylist.name|default:"No preference" }}</p>
+                            </div>
+                            <div class="col-md-6">
+                                <p class="mb-1"><strong>Date:</strong> {{ booking.date|date:"F j, Y" }}</p>
+                                <p class="mb-1"><strong>Time:</strong> {{ booking.time|time:"g:i A" }}</p>
+                                <p class="mb-1"><strong>Duration:</strong> {{ booking.duration }} minutes</p>
+                                <p class="mb-1"><strong>Status:</strong> {{ booking.get_status_display }}</p>
+                                <p class="mb-1"><strong>Total Price:</strong> &pound;{{ booking.total_price }}</p>
+                                <p class="mb-1"><strong>Deposit Required:</strong> &pound;{{ booking.deposit_amount }}</p>
+                                {% if booking.payment_deadline %}
+                                <p class="mb-1"><strong>Payment Deadline:</strong> {{ booking.payment_deadline }}</p>
+                                {% endif %}
+                            </div>
+                        </div>
+
+                        <div class="mt-4">
+                            <h5 class="h6">Additional Services</h5>
+                            {% if booking.additional_services.all %}
+                                <ul class="mb-0">
+                                    {% for item in booking.additional_services.all %}
+                                    <li>{{ item.additional_service.name }}</li>
+                                    {% endfor %}
+                                </ul>
+                            {% else %}
+                                <p class="text-muted mb-0">None</p>
+                            {% endif %}
+                        </div>
+
+                        {% if booking.notes %}
+                        <div class="mt-4">
+                            <h5 class="h6">Notes</h5>
+                            <p class="mb-0">{{ booking.notes }}</p>
+                        </div>
+                        {% endif %}
+
+                        <div class="mt-4">
+                            {% if booking.status == 'awaiting_payment' and not booking.deposit_paid %}
+                            <a href="{% url 'booking:booking_payment' booking.id %}" class="btn btn-primary me-2">Pay Deposit</a>
+                            {% endif %}
+                            <a href="{% url 'booking:booking_history' %}" class="btn btn-outline-primary">Back to Booking History</a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+{% endblock %}

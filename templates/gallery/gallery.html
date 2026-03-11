@@ -25,18 +25,36 @@
                 <i class="fas fa-image"></i>
                 {% endif %}
                 {{ category.name }}
-                {% with count=category_counts|default:0 %}
-                    {% if category.slug in category_counts %}
-                        <span class="filter-count">{{ category_counts.category.slug }}</span>
-                    {% endif %}
-                {% endwith %}
+                {% if category.slug in category_counts %}
+                    <span class="filter-count">{{ category_counts|get_item:category.slug|default:"" }}</span>
+                {% endif %}
             </button>
             {% endfor %}
         </div>
 
         <!-- Gallery Grid -->
         <div class="gallery-grid" id="galleryGrid">
-            <!-- Images will be loaded by JavaScript -->
+            {% for image in images %}
+            <div class="gallery-item" data-category="{{ image.category.slug }}">
+                <img src="{{ image.image.url }}" alt="{{ image.title }}" class="gallery-img" loading="lazy">
+                <div class="gallery-overlay">
+                    <span class="gallery-category" style="color: {{ image.category.color|default:'#a86ba3' }}">
+                        {{ image.category.name }}
+                    </span>
+                    <h3 class="gallery-title">{{ image.title }}</h3>
+                    <p class="gallery-description">{{ image.description|truncatechars:100 }}</p>
+                </div>
+                <div class="gallery-zoom">
+                    <i class="fas fa-search-plus"></i>
+                </div>
+            </div>
+            {% empty %}
+            <div class="no-results">
+                <i class="fas fa-images"></i>
+                <h3>No Images Found</h3>
+                <p>No images available yet.</p>
+            </div>
+            {% endfor %}
         </div>
 
         <!-- Loading Spinner -->
@@ -110,38 +128,54 @@
             </p>
         </div>
 
-        <div class="row">
-            {% for testimonial in testimonials %}
-            <div class="col-lg-4 col-md-6 mb-4" data-aos="fade-up" data-aos-delay="{{ forloop.counter|add:1|multiply:100 }}">
-                <div class="testimonial-card">
-                    <div class="testimonial-content">
-                        <p>"{{ testimonial.content }}"</p>
-                    </div>
-                    <div class="testimonial-author">
-                        {% if testimonial.client_avatar %}
-                        <img src="{{ testimonial.client_avatar.url }}" alt="{{ testimonial.client_name }}" class="testimonial-avatar" />
-                        {% else %}
-                        <div class="testimonial-avatar-placeholder">
-                            <i class="fas fa-user"></i>
-                        </div>
-                        {% endif %}
-                        <div>
-                            <div class="testimonial-rating">
-                                {% for i in "12345" %}
-                                {% if forloop.counter <= testimonial.rating %}
-                                <i class="fas fa-star"></i>
-                                {% else %}
-                                <i class="far fa-star"></i>
-                                {% endif %}
-                                {% endfor %}
-                            </div>
-                            <h5>{{ testimonial.client_name }}</h5>
-                            <p class="text-muted">{{ testimonial.client_title|default:"Client" }}</p>
-                        </div>
+        <div class="testimonial-grid">
+            <article class="testimonial-card" data-aos="fade-up" data-aos-delay="100">
+                <div class="testimonial-content">
+                    <p>"I've been coming to Joy World for over a year now, and I'm always impressed with their attention to detail. My skin has never looked better!"</p>
+                </div>
+                <div class="testimonial-rating" aria-label="5 star rating">
+                    <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                </div>
+                <div class="testimonial-author">
+                    <div class="testimonial-avatar-placeholder"><i class="fas fa-user"></i></div>
+                    <div>
+                        <h5 class="mb-1">Sarah Johnson</h5>
+                        <p class="text-muted mb-0">Skincare Client</p>
                     </div>
                 </div>
-            </div>
-            {% endfor %}
+            </article>
+
+            <article class="testimonial-card" data-aos="fade-up" data-aos-delay="200">
+                <div class="testimonial-content">
+                    <p>"The bridal makeup team at Joy World made me feel like a princess on my wedding day. The makeup lasted all day and looked incredible in photos."</p>
+                </div>
+                <div class="testimonial-rating" aria-label="5 star rating">
+                    <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                </div>
+                <div class="testimonial-author">
+                    <div class="testimonial-avatar-placeholder"><i class="fas fa-user"></i></div>
+                    <div>
+                        <h5 class="mb-1">Emma Wilson</h5>
+                        <p class="text-muted mb-0">Bridal Client</p>
+                    </div>
+                </div>
+            </article>
+
+            <article class="testimonial-card" data-aos="fade-up" data-aos-delay="300">
+                <div class="testimonial-content">
+                    <p>"I'm so impressed with the nail art at Joy World. Every design is unique and executed perfectly. My nails always get so many compliments!"</p>
+                </div>
+                <div class="testimonial-rating" aria-label="5 star rating">
+                    <i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>
+                </div>
+                <div class="testimonial-author">
+                    <div class="testimonial-avatar-placeholder"><i class="fas fa-user"></i></div>
+                    <div>
+                        <h5 class="mb-1">Olivia Martinez</h5>
+                        <p class="text-muted mb-0">Nail Art Client</p>
+                    </div>
+                </div>
+            </article>
         </div>
     </div>
 </section>
@@ -156,15 +190,15 @@
             Book your appointment today and experience the Joy World difference.
             Let us bring out your natural beauty.
         </p>
-        <div data-aos="zoom-in" data-aos-delay="300">
-            <a href="{% url 'booking:booking' %}" class="btn btn-light btn-lg me-3">Book Appointment</a>
+        <div class="cta-buttons" data-aos="zoom-in" data-aos-delay="300">
+            <a href="{% url 'booking:booking' %}" class="btn btn-light btn-lg">Book Appointment</a>
             <a href="{% url 'contact:contact' %}" class="btn btn-outline-light btn-lg">Contact Us</a>
         </div>
     </div>
 </section>
 {% endblock %}
 
-{% block extra_js %}
+{% block gallery_js %}
 <script>
     // Global variables
     let currentGalleryItems = [];
@@ -216,8 +250,6 @@
         // Set up infinite scroll
         setupInfiniteScroll();
         
-        // Show welcome modal if needed
-        showWelcomeModal();
     });
 
     // Function to display gallery images
@@ -544,7 +576,8 @@
         }
         
         try {
-            const response = await fetch(`${LIKE_URL}${imageId}/`, {
+            const likeUrl = LIKE_URL_TEMPLATE.replace('/0/', `/${imageId}/`);
+            const response = await fetch(likeUrl, {
                 method: 'POST',
                 headers: {
                     'X-CSRFToken': CSRF_TOKEN,
@@ -602,16 +635,6 @@
                 alert.remove();
             }
         }, 3000);
-    }
-
-    // Function to show welcome modal
-    function showWelcomeModal() {
-        {% if user.is_authenticated and not request.session.welcome_shown %}
-        setTimeout(() => {
-            const welcomeModal = new bootstrap.Modal(document.getElementById('welcomeBackModal'));
-            welcomeModal.show();
-        }, 1500);
-        {% endif %}
     }
 
     // Make functions available globally (for template use)
